@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080B16">
+  <title>海战推演 · Battleship Solitaire — 零猜测舰队推理</title>
+  <meta name="description" content="给出行与列的船格数、以及一支已知长度的舰队。船与船连对角都不能碰。不靠猜，靠推。">
+  <!-- 内联 SVG favicon：Pages 上没放 favicon.ico 就会 404，浏览器还会为此发一次请求 -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23060B16'/%3E%3Crect x='7' y='14' width='18' height='5' rx='1.5' fill='%2344688C'/%3E%3Crect x='12' y='9' width='8' height='4' rx='1.5' fill='%235FE3C8'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>海战推演 <span class="mono">Battleship</span></h1>
+        <p class="sub">零猜测舰队推理 · 行列船格数 · 船不碰船</p>
+      </div>
+      <div class="top-actions">
+        <button id="btn-sound" class="ghost" type="button" aria-pressed="true">声音</button>
+        <button id="btn-motion" class="ghost" type="button" aria-pressed="false">减弱动效</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- 菜单 -->
+      <section id="view-menu" class="view">
+        <div class="menu-hero">
+          <h2>把舰队摆进海里</h2>
+          <p>题面给你三样东西：每行每列有几个船格、舰队由哪几条船组成、以及"船与船连对角都不许碰"。剩下的全是推理。</p>
+        </div>
+
+        <div class="menu-cols">
+          <div class="col">
+            <h3>选一个海域</h3>
+            <div id="tier-list" class="tiers"></div>
+            <div id="resume-card" class="resume" hidden>
+              <div>
+                <b id="resume-name">未命名的对局</b>
+                <p id="resume-meta" class="mono"></p>
+              </div>
+              <button id="btn-resume" type="button">继续</button>
+            </div>
+          </div>
+
+          <div class="col">
+            <h3>最好成绩</h3>
+            <ul id="record-list" class="records"></ul>
+          </div>
+
+          <div class="col">
+            <h3>规则只有这几条</h3>
+            <ol class="rules">
+              <li>舰队长度题面给定，一条不多一条不少。</li>
+              <li>船是直线的一段，横竖都行，不能拐弯。</li>
+              <li>船与船之间连对角都不许碰。</li>
+              <li>数字是这一行/列里<b>船格</b>的个数，不是船的条数。</li>
+              <li>空白的菱形 <span class="dia">◆</span> 表示这条线题面没给数。</li>
+              <li>没点过的格子就是水——把每条船放对即胜。</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- 对局 -->
+      <section id="view-game" class="view" hidden>
+        <div class="stage">
+          <div class="stage-head">
+            <b id="stat-name">—</b>
+            <span id="stat-tier" class="chip"></span>
+            <span id="stat-fleet" class="chip mono"></span>
+            <span class="spacer"></span>
+            <span id="stat-time" class="mono">00:00</span>
+          </div>
+
+          <div id="board-wrap">
+            <canvas id="board" data-mode="ship" role="img" aria-label="海战推演盘面：行列船格数与舰队位置"></canvas>
+            <div id="busy-veil" hidden><p class="mono">声呐扫描中…</p></div>
+            <div id="win-veil" hidden>
+              <div class="win-card">
+                <h3>舰队全部落位</h3>
+                <p id="win-meta" class="mono"></p>
+                <p id="win-record" class="record-line"></p>
+                <div class="acts">
+                  <button id="btn-again" type="button">再来一局</button>
+                  <button id="btn-menu-2" type="button">返回海图</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p id="conflict-line" class="conflict-line" aria-live="polite"></p>
+        </div>
+
+        <aside class="panel">
+          <div class="modes" role="group" aria-label="画笔模式">
+            <button id="btn-mode-ship" class="mode is-on" type="button">船格</button>
+            <button id="btn-mode-water" class="mode" type="button">水格</button>
+            <button id="btn-mode-cycle" class="mode" type="button">轮换</button>
+          </div>
+          <p class="mode-note">拖过一片格子就是批量刷；同一支笔再点一次已经写过的格子，是把墨擦掉。</p>
+
+          <div class="acts">
+            <button id="btn-hint" type="button">提示<span id="hint-count" class="count mono">0</span></button>
+            <button id="btn-undo" type="button">撤销</button>
+            <button id="btn-new" type="button">新的一局</button>
+            <button id="btn-menu" type="button">海图</button>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><span>船格</span><b id="stat-ships" class="mono">0 / 0</b></div>
+            <div class="stat"><span>已封死的船</span><b id="stat-docked" class="mono">0</b></div>
+            <div class="stat"><span>剩下的舰队</span><b id="stat-remaining" class="mono">—</b></div>
+            <div class="stat"><span>线索</span><b id="stat-clues" class="mono">0</b></div>
+            <div class="stat"><span>步数</span><b id="stat-moves" class="mono">0</b></div>
+            <div class="stat"><span>提示</span><b id="stat-hints" class="mono">0</b></div>
+            <div class="stat"><span>实测难度</span><b id="stat-score" class="mono">0.0</b></div>
+          </div>
+
+          <div class="hint-box">
+            <b id="hint-rule">按「提示」要一条当下成立的推理</b>
+            <p id="hint-line"></p>
+          </div>
+
+          <div class="legend">
+            <span><i class="sw hull"></i>船格</span>
+            <span><i class="sw water"></i>水格</span>
+            <span><i class="sw unknown"></i>未定</span>
+            <span><i class="sw bad"></i>与题面冲突</span>
+          </div>
+          <p class="keyhint mono">H 提示 · Z 撤销 · 1/2/3 换笔 · N 新的一局</p>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>本地零依赖运行。引擎不变量由 <code>tools/engine-test.mjs</code> 证明，难度由 <code>tools/balance.mjs</code> 量出来，浏览器里的这一步由 <code>tools/verify.sh</code> 跑。</p>
+      <button id="btn-reset" class="link" type="button">清空存档</button>
+    </footer>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

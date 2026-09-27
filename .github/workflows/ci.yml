@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: syntax + engine guarantees
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 没有 npm install：运行时零依赖，为了让 CI「什么也不证明」而把 Electron 拉进容器，
+      # 就是让仓库从此开始怕网络抖动。
+      - name: Syntax check every source
+        run: |
+          for f in $(git ls-files 'js/*.js' 'js/*/*.js'); do node --check "$f" || exit 1; done
+          node --check server.cjs
+          node --check electron/main.cjs
+          node --check electron/preload.cjs
+          for f in $(git ls-files 'tools/*.mjs' tools/scenarios.js); do node --check "$f" || exit 1; done
+
+      # 真正的门禁：每张出货盘都要「唯一解 + 一条都不猜就推得完舰队全部落位 + 独立验胜对得上」，
+      # 而且每条铅笔规则的落子都必须和出题那支舰队逐格同色。这是纯 Node 测试，不用浏览器就能挡合并。
+      - name: Engine tests
+        run: node tools/engine-test.mjs
+
+      # 难度阶梯是承诺不是文案：band 是选取目标，这一招会在某一档不再落进自己的带、
+      # 或中位数不再严格递增时变红。
+      - name: Difficulty ladder is still measured
+        run: node tools/balance.mjs
+        env:
+          SAMPLES: "24"
+
+      - name: Entry files exist
+        run: test -f index.html && grep -q '<canvas' index.html && grep -q 'js/main.js' index.html
