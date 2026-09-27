@@ -8,7 +8,6 @@ import { Store } from './store.js';
 import { TIERS, tierFor, makePuzzle, generate, solutionOf, layout } from './engine/generate.js';
 import { countSolutions } from './engine/count.js';
 import * as Engine from './engine/ships.js';
-import { dateSeed } from './engine/rng.js';
 import { Game, MODES } from './ui/game.js';
 import { BoardView } from './render/board.js';
 
@@ -126,10 +125,18 @@ function show(which) {
   }
 }
 
+// 换一局必须真的换一张盘。默认种子曾经是按日期算的（bs-trainee2026928），于是同一天里连按两次
+// 「新的一局」交出的是同一张——按钮写着换，做的事是没换。随机只允许发生在**挑种子**这一步：
+// 生成器仍然只吃 seed，墙钟或 Math.random 一旦进了生成器内部，"同一个 seed 画同一张盘"当场破，
+// 而存档只记 seed，恢复就会变成另一张图。
+let drawNo = 0;
+function freshSeed(tierKey) {
+  const r = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
+  return `bs|${tierKey}|${++drawNo}|${r}`;
+}
+
 function begin({ tier = 'trainee', seed = null, resume = null } = {}) {
-  // 没给 seed 就按日期抽一个：存档只记 seed，所以这里必须给一个"下次还画得出同一张盘"的值，
-  // 而不是 Math.random()——那会让恢复对局变成另一张图。
-  const puzzle = makePuzzle(seed || dateSeed(`bs-${tier}`), tier);
+  const puzzle = makePuzzle(seed || freshSeed(tier), tier);
   if (!puzzle) return null;
   game = new Game(puzzle);
   game.mode = resume?.mode || 'ship';
@@ -420,7 +427,7 @@ window.battleship = {
   hintBox: () => ({ rule: el.hintRule.textContent, line: el.hintLine.textContent }),
   engine: {
     ...Engine,
-    dateSeed,
+    freshSeed,
     makePuzzle,
     generate,
     solutionOf,

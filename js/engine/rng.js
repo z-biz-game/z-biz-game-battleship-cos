@@ -34,9 +34,3 @@ export function makeRng(seed) {
   };
   return api;
 }
-
-export const dateSeed = (prefix = '') => {
-  const d = new Date();
-  const key = `${d.getFullYear()}${d.getMonth() + 1}${d.getDate()}`;
-  return `${prefix}${key}`;
-};

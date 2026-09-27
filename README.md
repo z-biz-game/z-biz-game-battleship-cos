@@ -23,10 +23,10 @@
   这一条抓的是"推错了"，比"推不动"值钱。
 - 难度不是标签：`初学 → 大师` 五档的分数带是**实测**出来的（`npm run balance` 打印分位表 + 漂移门禁），
   最大档只到 7×7，**为什么不能更大是量出来的**，写在 `js/engine/generate.js` 的档位表上方。
-- 规模：**10 个 ES Module / 2,466 行 JS** + 4 个验证脚本 950 行 + `verify.sh` 134 行 + 302 行 CSS/HTML，
+- 规模：**10 个 ES Module / 2,470 行 JS** + 4 个验证脚本 979 行 + `verify.sh` 134 行 + 302 行 CSS/HTML，
   **运行时依赖 0 个**。
 - 验证：**引擎不变量全绿**（七条规则的 soundness 探针 / 10 组独立计数对账 / 466 处单格改动逐一答复 /
-  五档出题 6/6）+ **115 项浏览器断言**（10 个场景，读 DOM 几何与画布像素，不读标志位）。
+  五档出题 6/6）+ **119 项浏览器断言**（10 个场景，读 DOM 几何与画布像素，不读标志位）。
 - **在线试玩**：<https://z-biz-game.github.io/z-biz-game-battleship-cos/>（`main` 分支推送即自动部署）
 
 ---
@@ -51,7 +51,7 @@ npm run verify       # 无头 Chrome 跑 10 个浏览器场景（需本机 Chrom
 ```
 === engine ===   25 checks, 0 failed
 === gen ===      30 checks, 0 failed
-=== play ===      8 checks, 0 failed
+=== play ===     12 checks, 0 failed
 === hint ===      9 checks, 0 failed
 === paint ===     7 checks, 0 failed
 === erase ===     6 checks, 0 failed
@@ -133,7 +133,7 @@ BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 ```
 index.html             一个 canvas + 侧栏读数 + 规则说明
 css/game.css           全部颜色来自 theme.js 注入的 CSS 变量
-js/engine/rng.js       字符串种子 → 确定性随机；dateSeed
+js/engine/rng.js       字符串种子 → 确定性随机（盘只由 seed 决定，不含时钟与 Math.random）
 js/engine/ships.js     模型、七条规则、nextDeduction、独立 verify/diagnose
 js/engine/count.js     独立的逐格穷举计数器（唯一性的第二意见，不含推理规则）
 js/engine/generate.js  种舰队 → 按"唯一且推得完"抹线索 → 按实测分数带抽盘 + 五档档位表

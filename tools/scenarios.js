@@ -191,6 +191,29 @@
     ck('刷满正解即判胜', A().state().won === true);
     ck('胜利卡片弹出', shown('#win-veil'));
     ck('成绩进了 localStorage', JSON.stringify(w.localStorage.getItem('battleship.save.v1') || '{}').includes('apprentice'));
+
+    // 换一局必须真的换一张盘。默认种子曾经是按日期算的（bs-trainee2026928），于是同一天里连按
+    // 两次「新的一局」交出的是同一张——按钮写着换，做的事是没换。这里连点两次**真按钮**，量盘面本身。
+    const fp = (p) => `${Array.from(p.board.rows).join(',')}|${Array.from(p.board.cols).join(',')}|${Array.from(p.solution).join('')}`;
+    A().begin({ tier: 'trainee' });
+    const fp1 = fp(A().game.puzzle);
+    $('#btn-new').click();
+    await wait(80);
+    const fp2 = fp(A().game.puzzle);
+    $('#btn-new').click();
+    await wait(80);
+    const fp3 = fp(A().game.puzzle);
+    ck('连按两次 新的一局 交出两张不同的盘', fp1 !== fp2 && fp2 !== fp3, `${fp1} = ${fp2} = ${fp3}`);
+    const seed = A().game.puzzle.originSeed;
+    ck('默认种子带档位、看得出不是按日期拼的', /^bs\|trainee\|\d+\|/.test(seed), seed);
+    // 随机只能发生在挑种子这一步：盘本身必须还能只凭 seed 重画出来，否则"存档只记 seed"是假话。
+    A().setMode('ship');
+    A().paint([0]);
+    await wait(20);
+    const saved = E().Store.resume();
+    ck('换出来的这一局把 seed 写进了续局存档', saved && saved.seed === seed, `${saved && saved.seed} vs ${seed}`);
+    const again = E().makePuzzle(seed, 'trainee');
+    ck('同一个 seed 在任何时候画回同一张盘', !!again && fp(again) === fp3, seed);
     return report({ tier: 'play' });
   };
 
