@@ -8,14 +8,39 @@
 
 import { Palette, Cell, Radius, Font } from '../theme.js';
 import { UNKNOWN, SHIP, WATER } from '../engine/ships.js';
+import { FX } from './fx.js';
 
 const GUTTER = 1.15;
+
+// 余辉的强度分两档：点名船格那一档要压得住钢色，点名水格那一档只是"这里也看了一眼"。
+// 颜色不在这里，在 Palette（hint / error）——这里只写"盖多少"。
+const PULSE_GAIN = { ship: 0.30, water: 0.16, conflict: 0.22 };
+
+// 位图资产按 import.meta.url 解析，而不是写死 '/assets/...'：Pages 把这个仓发在
+// /z-biz-game-battleship-cos/ 之下，绝对路径会去站点根目录要一张不存在的图。
+// 相对层数以**本文件**为基准：js/render/board.js → 两级向上才到仓根，一级会落在 js/assets/。
+function loadAsset(rel) {
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = new URL(rel, import.meta.url).href;
+  return img;
+}
 
 export class BoardView {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.geo = { cell: 0, ox: 0, oy: 0, w: 0, h: 0, dpr: 1, size: 0 };
+    this.sea = loadAsset('../../assets/textures/sea-depth-256.png');
+    this.sweep = loadAsset('../../assets/textures/sonar-sweep.png');
+    this.seaPattern = null;
+    this.onAssetsLoad = null;
+    const ready = () => {
+      this.seaPattern = null;
+      if (this.onAssetsLoad) this.onAssetsLoad();
+    };
+    this.sea.addEventListener('load', ready);
+    this.sweep.addEventListener('load', ready);
   }
 
   resize(game, availW, availH) {
@@ -37,9 +62,15 @@ export class BoardView {
     return this.geo;
   }
 
+  // rect 是"屏幕上真占多大"，style.width 是"布局算出来多大"。页面缩放、父容器 transform、
+  // 或任何让两者不等的情形下，只用 clientX - left 就会点 A 打 B —— 所以按这个比值反算。
   local(clientX, clientY) {
     const r = this.canvas.getBoundingClientRect();
-    return { x: clientX - r.left, y: clientY - r.top };
+    const cssW = parseFloat(this.canvas.style.width) || r.width;
+    const cssH = parseFloat(this.canvas.style.height) || r.height;
+    const kx = cssW > 0 ? r.width / cssW : 1;
+    const ky = cssH > 0 ? r.height / cssH : 1;
+    return { x: (clientX - r.left) / (kx || 1), y: (clientY - r.top) / (ky || 1) };
   }
 
   hitCell(clientX, clientY) {
@@ -59,13 +90,71 @@ export class BoardView {
     return { x: ox + c * cell, y: oy + r * cell, w: cell, h: cell };
   }
 
-  draw(game, { pulse = null } = {}) {
+  // 海那一层：纹理打底，声呐扫掠从中心转过去。它**必须**画在格子底下——每一格都是不透明
+  // 填充，所以这道光束只会从格缝、盘框和留白里透出来。两件事因此同时成立：画面有了质地，
+  // 而"船格中心那一像素必须等于 Palette.hull"这条浏览器断言一寸没被动过。
+  drawSea(game, won) {
+    const { ctx, geo } = this;
+    const cw = this.canvas.width / geo.dpr;
+    const ch = this.canvas.height / geo.dpr;
+    const cx = geo.ox + (game.board.w * geo.cell) / 2;
+    const cy = geo.oy + (game.board.h * geo.cell) / 2;
+    ctx.save();
+    if (this.sea && this.sea.complete && this.sea.naturalWidth > 0) {
+      if (!this.seaPattern) this.seaPattern = ctx.createPattern(this.sea, 'repeat');
+      if (this.seaPattern) {
+        ctx.fillStyle = this.seaPattern;
+        ctx.fillRect(0, 0, cw, ch);
+      }
+    }
+    if (!this.seaPattern) {
+      // 图还没到（或这个运行时根本不加载位图）：底色仍要铺满，不能露出透明的洞。
+      ctx.fillStyle = Palette.bgTop;
+      ctx.fillRect(0, 0, cw, ch);
+    }
+    if (FX.enabled && this.sweep && this.sweep.complete && this.sweep.naturalWidth > 0) {
+      const r = Math.max(cw, ch) * 0.92;
+      ctx.globalAlpha = 0.5;
+      ctx.translate(cx, cy);
+      ctx.rotate(FX.sweep);
+      ctx.drawImage(this.sweep, -r, -r, r * 2, r * 2);
+      ctx.rotate(-FX.sweep);
+      ctx.translate(-cx, -cy);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    if (won && FX.enabled) this.drawRipples(cx, cy, geo.cell);
+  }
+
+  drawRipples(cx, cy, cell) {
+    const { ctx } = this;
+    ctx.save();
+    for (const ring of FX.rippleRings()) {
+      const r = ring.cells * cell;
+      ctx.strokeStyle = Palette.accent;
+      ctx.globalAlpha = 0.42 * (1 - ring.t) * (1 - ring.t);
+      ctx.lineWidth = Math.max(1, cell * 0.06 * (1 - ring.t) + 1);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  draw(game) {
     const { ctx, geo } = this;
     const { cell, ox, oy } = geo;
     const board = game.board;
     const cells = game.st.cells;
     const won = game.status === 'won';
+    // 余辉是一次读数的纯函数：把包络在循环外算一遍，49 格共享同一个 alpha，
+    // 免得"这一格读得早、那一格读得晚"在同一帧里出现两种亮度。
+    const pulseEnv = FX.pulseAlpha();
+    const pulseCells = pulseEnv > 0 ? FX.pulseCells : null;
+    const pulseFill = FX.pulseKind === 'conflict' ? Palette.error : Palette.hint;
+    const pulseGain = PULSE_GAIN[FX.pulseKind] ?? PULSE_GAIN.water;
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.drawSea(game, won);
 
     // 船体按"哪一条船"分色只在赢的时候有意义：那时 dockedShips 认得出完整的舰队。
     // 还在下的过程中，一段没封死的船该是船格的颜色，不该提前穿上某条船的制服。
@@ -98,10 +187,12 @@ export class BoardView {
         roundRect(ctx, rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2, Radius.cell);
         ctx.stroke();
       }
-      if (pulse && pulse.cells && pulse.cells.includes(t)) {
-        ctx.fillStyle = pulse.kind === 'ship' ? 'rgba(123,184,255,0.30)' : 'rgba(123,184,255,0.16)';
+      if (pulseCells && pulseCells.includes(t)) {
+        ctx.globalAlpha = pulseEnv * pulseGain;
+        ctx.fillStyle = pulseFill;
         roundRect(ctx, rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2, Radius.cell);
         ctx.fill();
+        ctx.globalAlpha = 1;
       }
     }
 

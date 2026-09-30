@@ -59,6 +59,10 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 button.ghost { background: transparent; color: var(--ink-dim); }
 button.ghost[aria-pressed='true'] { color: var(--accent); border-color: var(--accent-soft); }
 button.link { background: none; border: 0; color: var(--ink-faint); text-decoration: underline; padding: 0; }
+/* 没有全屏 API 的浏览器（iOS Safari 到今天还是没有）里，这颗按钮必须是"看着就不能按"，
+   而不是"按了没反应"——后者会让玩家连按十次，然后怀疑游戏坏了。 */
+button:disabled { opacity: 0.42; cursor: not-allowed; }
+button:disabled:active { transform: none; }
 
 /* 视图 */
 main { flex: 1; }
