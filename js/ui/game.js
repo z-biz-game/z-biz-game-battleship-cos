@@ -134,14 +134,16 @@ export class Game {
       return { done: v.ok, text: v.ok ? '舰队已经全部落位' : '本地规则推不动了，剩下的要靠更长的线索链' };
     }
     if (d.stalled) {
-      return { conflict: true, cells: d.cells, text: d.why };
+      return { conflict: true, kind: 'conflict', cells: d.cells, text: d.why };
     }
     applyDeduction(this.st, d);
     this.recompute();
     this.checkWin();
     this.lastHint = { cells: d.cells, rule: d.rule, why: d.why };
     this.record('hint', { cells: d.cells });
-    return { cells: d.cells, rule: d.rule, why: d.why, charged: true };
+    // kind 是从 nextDeduction 一路带上来的：盘面上"点名的是一串船格"和"点名的是一片水"
+    // 是两句分量不同的话，高亮强度因此才分得开。半路丢掉它，两种点名就长成同一种。
+    return { cells: d.cells, kind: d.kind, rule: d.rule, why: d.why, charged: true };
   }
 
   // 只用规则把这一局推到底：harness 用它对照"推理机能不能独立赢下这局"。

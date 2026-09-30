@@ -9,13 +9,21 @@
 let ctx = null;
 let master = null;
 let enabled = true;
+// 两个计数器只为了一句可读的话："静音的时候一个节点都没建"。没有读数，这条只能靠
+// 眼睛看代码——而"看代码觉得没问题"正是这条判据要防的东西。
+let ctxCreated = 0;
+let oscCreated = 0;
 
 function audio() {
+  // 静音在**建上下文之前**就拦掉：只让 tone() 早退的话，AudioContext 照样被 new 出来、
+  // 照样在后台跑（耗电，而且在 iOS 上它还会占用唯一的音频会话，把"静音"变成"憋着"）。
+  if (!enabled) return null;
   if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') return null;
   if (!ctx) {
     const Ctor = typeof AudioContext !== 'undefined' ? AudioContext : webkitAudioContext;
     try {
       ctx = new Ctor();
+      ctxCreated += 1;
       master = ctx.createGain();
       master.gain.value = 0.5;
       master.connect(ctx.destination);
@@ -31,9 +39,10 @@ function audio() {
 // 另起一种声部形状，就是一个游戏开始长出「不属于同一件乐器」的声音的方式。
 function tone({ f0, f1 = f0, dur = 0.12, type = 'sine', gain = 0.22, delay = 0 }) {
   const ac = audio();
-  if (!ac || !enabled) return;
+  if (!ac) return;
   const t = ac.currentTime + delay;
   const osc = ac.createOscillator();
+  oscCreated += 1;
   const vol = ac.createGain();
   osc.type = type;
   osc.frequency.setValueAtTime(f0, t);
@@ -47,10 +56,23 @@ function tone({ f0, f1 = f0, dur = 0.12, type = 'sine', gain = 0.22, delay = 0 }
 }
 
 export const Sound = {
+  // 静音做的是上下文级的 suspend()，不是"把音量调成 0 然后继续建节点"：前者让音频线程
+  // 真的停下来（省电，也释放在 iOS 上那个独占的音频会话），后者只是听不见。
   setEnabled(v) {
     enabled = !!v;
+    if (!ctx) return;
+    try {
+      if (!enabled && ctx.state === 'running') ctx.suspend().catch(() => {});
+      else if (enabled && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    } catch {
+      /* 老 WebKit 上这两个方法可能缺席：那也只是 suspend 没发生，声音仍被 tone() 拦住 */
+    }
   },
   enabled: () => enabled,
+
+  // 给闸读的一组数。stats().oscillators 在静音期间必须纹丝不动——这一条是"真静音"
+  // 和"只是没响"的分界线，而它只能被量出来，不能被读代码读出来。
+  stats: () => ({ enabled, context: ctx ? ctx.state : 'none', contexts: ctxCreated, oscillators: oscCreated }),
 
   // 写船格：一声往下的水滴。滑音向下是刻意的——落子在这盘上不是「敲上去」，
   // 是「投进去」。它和 erase 同方向，靠的是音区：一个在高频尽头，一个贴着低海床。

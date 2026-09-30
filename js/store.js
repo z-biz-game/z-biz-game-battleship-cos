@@ -21,7 +21,10 @@ function load() {
     if (!raw) return defaults();
     const got = JSON.parse(raw);
     const base = defaults();
-    return { ...base, ...got, settings: { ...base.settings, ...(got.settings || {}) }, totals: { ...base.totals, ...(got.totals || {}) } };
+    const save = { ...base, ...got, settings: { ...base.settings, ...(got.settings || {}) }, totals: { ...base.totals, ...(got.totals || {}) } };
+    // 第一段解码（JSON.parse）过了不代表内容可用：坏的那一条单独扔，其余原样留着。
+    if (!validResume(save.resume)) save.resume = null;
+    return save;
   } catch {
     return defaults();
   }
@@ -47,6 +50,7 @@ function encodeInk(cells) {
 
 function decodeInk(list, size) {
   const cells = new Uint8Array(size);
+  if (!Array.isArray(list)) return cells;
   let t = 0;
   for (let i = 0; i + 1 < list.length; i += 2) {
     const v = list[i];
@@ -54,6 +58,35 @@ function decodeInk(list, size) {
     for (let k = 0; k < n && t < size; k++) cells[t++] = v;
   }
   return cells;
+}
+
+// 坏记录要能认出来，而且只能丢它那一条。localStorage 是玩家自己碰得到的地盘：手改一个数、
+// 别的扩展写坏一次、上一版格式没写完——这几种情况下正确的行为都是"这一局恢复不了"，
+// 而不是"整份存档清空"（成绩和设置是无辜的），更不是"begin() 抛异常"（那是白屏）。
+// 所以这里查的是**结构**而不是取值范围之外的偏好：seed/tier 得是字符串、cells 得是
+// 盘大小的整数、ink 得是成对的游程且总长刚好等于 cells、花费不能是负数。
+function validResume(r) {
+  if (!r || typeof r !== 'object' || Array.isArray(r)) return false;
+  if (typeof r.seed !== 'string' || !r.seed) return false;
+  if (typeof r.tier !== 'string' || !r.tier) return false;
+  if (!Number.isInteger(r.cells) || r.cells <= 0 || r.cells > 4096) return false;
+  if (!Array.isArray(r.ink) || r.ink.length % 2 !== 0) return false;
+  let covered = 0;
+  for (let i = 0; i < r.ink.length; i += 2) {
+    const v = r.ink[i];
+    const n = r.ink[i + 1];
+    if (!Number.isInteger(v) || v < 0 || v > 255) return false;
+    if (!Number.isInteger(n) || n <= 0) return false;
+    covered += n;
+    if (covered > r.cells) return false;
+  }
+  // 游程总长必须刚好铺满盘面：多了上面就拒了，少了说明这盘少了一截墨，
+  // 恢复出来的是一张和 seed 对不上的图——那比"没有存档"坏得多。
+  if (covered !== r.cells) return false;
+  if (!Number.isInteger(r.moves) || r.moves < 0) return false;
+  if (!Number.isInteger(r.hints) || r.hints < 0) return false;
+  if (typeof r.elapsedMs !== 'number' || !Number.isFinite(r.elapsedMs) || r.elapsedMs < 0) return false;
+  return true;
 }
 
 export const Store = {
@@ -112,11 +145,14 @@ export const Store = {
   },
 
   resume() {
-    return this.data.resume;
+    return validResume(this.data.resume) ? this.data.resume : null;
   },
 
+  // 解码前要再过一次结构检查：load() 那道是在模块求值时跑的，而在这之前谁也可能
+  // 直接往 Store.data 里塞一条（测试就是这么构造坏记录的）。new Uint8Array(undefined)
+  // 不抛错，它给一张 0 格的盘——那比抛错更难查。
   resumeCells(r) {
-    return r ? decodeInk(r.ink, r.cells) : null;
+    return validResume(r) ? decodeInk(r.ink, r.cells) : null;
   },
 
   clearResume() {
