@@ -63,6 +63,13 @@ export const Palette = {
   tintDone: '#4E7F92',
   tintEdge: 'rgba(238,246,251,0.86)',
   tintBad: 'rgba(255,92,122,0.30)',
+
+  // 下面几个只服务于 assets/gen/make_art.py 画出来的位图资产：它们要的是比界面
+  // 更极端的端点（海沟与浪花），界面里没人引用。由资产生成脚本补进 Palette，是为了
+  // 让「美术用的颜色代码里没有」这件事不可能发生。
+  artDeep: '#03060D', // 海沟：图标与纹理里比 bgTop 更暗的那一端，船影的落影也用它
+  artFoam: '#D9F5EE', // 浪花白：确认水格上那个点的颜色，比 ink 更冷一点
+  artSteel: '#7FA8C9', // 亮钢：上层建筑的高光，比 hullEdge 暗、比 hull 亮
 };
 
 export const Space = { page: 20, card: 16, inner: 12, gutter: 10 };

@@ -12,6 +12,9 @@ const TYPES = {
   '.cjs': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  // Chrome 对 manifest 的 MIME 是挑的：application/octet-stream 会被判成"清单加载失败"，
+  // 于是本地这台服务器上的可安装性和线上不一致——而排查的人只会先怀疑自己的 manifest 写错了。
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',

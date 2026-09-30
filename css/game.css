@@ -11,7 +11,13 @@
 html, body { margin: 0; height: 100%; }
 
 body {
-  background: radial-gradient(120% 90% at 12% -10%, var(--bg-top), var(--bg-bottom) 60%);
+  /* 两层：上面是"夜海"的径向深度渐变，下面是 assets/gen/make_art.py 画的无缝海底纹理。
+     纹理两轴都可平铺（tools/art-check.py 量过 wrap 台阶），所以 background-size 给死 512px
+     也不会露接缝；它只把亮度抬到"有质地"的程度，不参与任何语义分层。 */
+  background:
+    radial-gradient(120% 90% at 12% -10%, var(--bg-top), var(--bg-bottom) 60%),
+    url('../assets/textures/sea-depth.png') 0 0 / 512px 512px repeat;
+  background-blend-mode: luminosity;
   color: var(--ink);
   font: calc(15px * var(--font-scale)) / 1.6 var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -103,9 +109,14 @@ main { flex: 1; }
 #board-wrap { position: relative; display: flex; justify-content: center; }
 #board { touch-action: none; cursor: crosshair; border-radius: var(--radius-cell); }
 
-#busy-veil, #win-veil { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(6, 11, 22, 0.82); border-radius: var(--radius-card); }
-#busy-veil[hidden], #win-veil[hidden] { display: none; }
+#busy-veil, #win-veil, #pause-veil { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(6, 11, 22, 0.82); border-radius: var(--radius-card); }
+#busy-veil[hidden], #win-veil[hidden], #pause-veil[hidden] { display: none; }
 #busy-veil p { color: var(--accent); font-size: 13px; letter-spacing: 0.12em; }
+/* 暂停卡：和胜利卡同款容器，但描边是"未定"的蓝——它说的是停一下，不是结束了。 */
+.pause-card { text-align: center; background: var(--surface-lift); border: 1px solid var(--line-heavy); border-radius: var(--radius-card); padding: 20px 24px; max-width: 300px; }
+.pause-card h3 { margin: 0 0 8px; }
+.pause-card p { margin: 0 0 14px; color: var(--ink-dim); font-size: 13px; }
+.pause-card .acts { display: flex; justify-content: center; }
 .win-card { text-align: center; background: var(--surface-lift); border: 1px solid var(--accent-soft); border-radius: var(--radius-card); padding: 20px 24px; max-width: 320px; }
 .win-card h3 { margin: 0 0 8px; }
 .win-card p { margin: 0 0 14px; color: var(--ink-dim); font-size: 13px; }
@@ -156,3 +167,41 @@ body.reduce-motion * { transition: none !important; animation: none !important; 
   .panel { order: 2; }
   .stats { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* ---- 命中区、安全区与那张海平线图 ------------------------------------------------------ */
+
+/* 44px 是 iOS HIG 的下限，而它得写在 CSS 里才算数：`.ghost` 那批顶栏按钮原本只有
+   9px 上下内边距（实测约 38px 高），在手机上就是"想按静音结果按到减弱动效"。
+   min-width 一起给，是因为纯图标按钮（将来放一枚 svg 就完事的那种）会缩成一个点。 */
+button { min-height: 44px; min-width: 44px; }
+.tier { min-height: 56px; }
+.mode { min-height: 44px; }
+
+/* safe-area：viewport-fit=cover 已经开了，所以 env() 在刘海机上是真值而不是 0。
+   顶栏给刘海让路、底部给 Home 指示条让路，横向给圆角——三边都要，缺一条就有一条贴死。 */
+.topbar { padding-top: env(safe-area-inset-top); }
+#app { padding-left: max(var(--space-page), env(safe-area-inset-left)); padding-right: max(var(--space-page), env(safe-area-inset-right)); }
+.foot { padding-bottom: env(safe-area-inset-bottom); }
+.panel { padding-bottom: env(safe-area-inset-bottom); }
+
+/* 菜单页顶部那条海平线：assets/gen/make_art.py 画的 1200×320。它不是装饰——
+   它是"这盘在海上"这件事的第一句话，而且只在菜单页出现，对局页一寸都不占。
+   上面压一层从左往右淡出的渐变，保证标题在任何一段海面上都读得清。 */
+.menu-hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  padding: var(--space-card);
+  margin-bottom: var(--space-card);
+  /* 透明度用 color-mix 从 --surface 折出来，而不是在这里再目测一遍 rgba()：本文件的规矩是
+     颜色只有 js/theme.js 一个出处，多一种字面量色值就多一处会和画布漂移的地方。 */
+  background-image: linear-gradient(100deg, var(--surface) 18%,
+      color-mix(in srgb, var(--surface) 72%, transparent) 52%,
+      color-mix(in srgb, var(--surface) 26%, transparent) 100%),
+    url('../assets/img/menu-hero.png');
+  background-size: cover, cover;
+  background-position: center right, center right;
+}
+.menu-hero h2 { position: relative; }
+.menu-hero p { position: relative; }

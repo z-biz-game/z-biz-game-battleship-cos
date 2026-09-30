@@ -3,11 +3,34 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#080B16">
+  <!-- theme-color 与 js/theme.js 的 Palette.bgTop 同值：地址栏和系统状态条该和这片海是同一个颜色。 -->
+  <meta name="theme-color" content="#060B16">
+  <meta name="color-scheme" content="dark">
   <title>海战推演 · Battleship Solitaire — 零猜测舰队推理</title>
   <meta name="description" content="给出行与列的船格数、以及一支已知长度的舰队。船与船连对角都不能碰。不靠猜，靠推。">
-  <!-- 内联 SVG favicon：Pages 上没放 favicon.ico 就会 404，浏览器还会为此发一次请求 -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23060B16'/%3E%3Crect x='7' y='14' width='18' height='5' rx='1.5' fill='%2344688C'/%3E%3Crect x='12' y='9' width='8' height='4' rx='1.5' fill='%235FE3C8'/%3E%3C/svg%3E">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="海战推演">
+  <!-- 社交卡：og:image 必须是绝对 URL（爬虫不会替你补域名），所以这里写死部署站。
+       盘上那张图由 assets/gen/make_art.py 画，路径与 manifest.webmanifest 里的截图同源。 -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="海战推演 Battleship Solitaire">
+  <meta property="og:title" content="海战推演 · 零猜测舰队推理">
+  <meta property="og:description" content="每一局都保证唯一解、且一条都不猜就能把整支舰队推到底。难度是量出来的，不是文案写的。">
+  <meta property="og:url" content="https://z-biz-game.github.io/z-biz-game-battleship-cos/">
+  <meta property="og:image" content="https://z-biz-game.github.io/z-biz-game-battleship-cos/assets/img/og-cover.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://z-biz-game.github.io/z-biz-game-battleship-cos/assets/img/og-cover.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <!-- 图标全部是真 PNG（assets/gen/make_art.py 画的），那张内联 SVG 已经退场：
+       它进不了 iOS 主屏、也进不了 PWA 安装面板，而这两处才是图标值钱的地方。 -->
+  <link rel="icon" href="assets/icons/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/icon-48.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
   <link rel="stylesheet" href="css/game.css">
 </head>
 <body>
@@ -18,8 +41,10 @@
         <p class="sub">零猜测舰队推理 · 行列船格数 · 船不碰船</p>
       </div>
       <div class="top-actions">
-        <button id="btn-sound" class="ghost" type="button" aria-pressed="true">声音</button>
-        <button id="btn-motion" class="ghost" type="button" aria-pressed="false">减弱动效</button>
+        <button id="btn-pause" class="ghost" type="button" aria-pressed="false" title="暂停这一局（P 或 空格）">暂停</button>
+        <button id="btn-sound" class="ghost" type="button" aria-pressed="true" title="声音开关（M）">声音</button>
+        <button id="btn-motion" class="ghost" type="button" aria-pressed="false" title="减弱动效">减弱动效</button>
+        <button id="btn-fullscreen" class="ghost" type="button" aria-pressed="false" title="全屏（F）">全屏</button>
       </div>
     </header>
 
@@ -77,6 +102,15 @@
           <div id="board-wrap">
             <canvas id="board" data-mode="ship" role="img" aria-label="海战推演盘面：行列船格数与舰队位置"></canvas>
             <div id="busy-veil" hidden><p class="mono">声呐扫描中…</p></div>
+            <div id="pause-veil" hidden>
+              <div class="pause-card">
+                <h3>已暂停</h3>
+                <p class="mono">计时停在 <span id="pause-time">00:00</span></p>
+                <div class="acts">
+                  <button id="btn-resume-play" type="button">继续推演</button>
+                </div>
+              </div>
+            </div>
             <div id="win-veil" hidden>
               <div class="win-card">
                 <h3>舰队全部落位</h3>
@@ -128,7 +162,7 @@
             <span><i class="sw unknown"></i>未定</span>
             <span><i class="sw bad"></i>与题面冲突</span>
           </div>
-          <p class="keyhint mono">H 提示 · Z 撤销 · 1/2/3 换笔 · N 新的一局</p>
+          <p class="keyhint mono">H 提示 · Z 撤销 · 1/2/3 换笔 · N 新的一局 · P 暂停 · M 静音 · F 全屏 · ? 玩法</p>
         </aside>
       </section>
     </main>
@@ -139,6 +173,9 @@
     </footer>
   </div>
 
+  <!-- 注册服务工作者：普通脚本而不是模块，理由见文件头（它必须比整条引擎依赖图更早开始，
+       而且任何一处模块解析失败都不该连累"离线还能打开"）。 -->
+  <script src="js/pwa-register.js"></script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

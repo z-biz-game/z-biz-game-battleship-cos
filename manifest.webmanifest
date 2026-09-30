@@ -1,0 +1,44 @@
+{
+  "name": "海战推演 Battleship Solitaire",
+  "short_name": "海战推演",
+  "description": "给出行与列的船格数、以及一支已知长度的舰队。船与船连对角都不能碰。不靠猜，靠推。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "id": "battleship-solitaire",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#060B16",
+  "theme_color": "#060B16",
+  "categories": ["games", "puzzle"],
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/img/og-cover.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "5×5 海域：行列船格数与一支四条船的舰队"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "继续未完成的一局",
+      "short_name": "继续",
+      "url": "./#resume",
+      "icons": [{ "src": "assets/icons/icon-96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "新的一局",
+      "short_name": "新的一局",
+      "url": "./#new",
+      "icons": [{ "src": "assets/icons/icon-96.png", "sizes": "96x96" }]
+    }
+  ]
+}
