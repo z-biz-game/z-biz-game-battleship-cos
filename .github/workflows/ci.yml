@@ -44,6 +44,11 @@ jobs:
       - name: Entry files exist
         run: test -f index.html && grep -q '<canvas' index.html && grep -q 'js/main.js' index.html
 
+      # 上线那份产物由 tools/assemble-site.sh 拷出来，pages.yml 里也会再跑一次同样的闸；
+      # 这里跑的是闸自己拷的那一份，于是 check job 不依赖 pages 的权限就能挡住清单落后。
+      - name: Deploy set carries every referenced path
+        run: node tools/deploy-set.mjs
+
   # 真浏览器闸：headless Chrome + CDP，读 DOM 文本/几何与画布像素，不读内部标志位。
   # 独立 job，node 22 而不是 check job 的 20：台架是裸 CDP 驱动，用的是 Node 22 才有的全局
   # WebSocket/fetch；在 20 上第一次 attach 就死在 "WebSocket is not defined"，一条断言都跑不到。

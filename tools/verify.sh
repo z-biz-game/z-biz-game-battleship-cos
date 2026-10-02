@@ -83,6 +83,20 @@ echo "boot: battleship $BOOT at $BASE"
 [ "$BOOT" = "nope" ] && { echo "window.battleship never appeared at $BASE" >&2; exit 4; }
 
 FAILED=0
+
+# 部署集闸放在浏览器闸之前：它不碰 Chrome，跑的却是 Pages 那份产物，而下面所有场景跑的都是
+# 仓库根。少了这一步，"本地全绿但线上 404"这一整类坏法没有任何一步能发现（曾经就是这样：
+# manifest/sw.js/assets 全都没进 artifact，100+ 条断言一条不红）。
+# rc 与条数都读回来：闸少了断言却 exit 0，是比缺文件更坏的结果。
+echo "=== deploy-set ==="
+node tools/deploy-set.mjs >_tmp-verify-deploy-set.log 2>&1
+DS_RC=$?
+DS_ROWS=$(sed -n 's/^rows: \([0-9]*\) .*$/\1/p' _tmp-verify-deploy-set.log | tail -1)
+cat _tmp-verify-deploy-set.log
+[ "$DS_RC" = 0 ] || { echo "deploy-set FAILED rc=$DS_RC" >&2; FAILED=1; }
+[ "${DS_ROWS:-0}" = "${DEPLOY_SET_ROWS_WANT:-36}" ] || {
+  echo "deploy-set 断言条数 ${DS_ROWS:-读不到} ≠ 钉住的 ${DEPLOY_SET_ROWS_WANT:-36}" >&2; FAILED=1; }
+
 for s in ${SCENARIOS:-engine gen play hint paint erase undo save resume layout}; do
   echo "=== $s ==="
   node tools/playtest.cjs scenario "$s" 2>/tmp/battleship-$s.console.log | tail -1 | sed 's/^RESULT //' | python3 -c "

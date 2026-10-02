@@ -10,6 +10,7 @@
     "electron": "electron .",
     "test": "node tools/engine-test.mjs",
     "balance": "node tools/balance.mjs",
+    "deploy-set": "node tools/deploy-set.mjs",
     "verify": "bash tools/verify.sh",
     "check": "for f in js/*.js js/*/*.js; do node --check \"$f\" || exit 1; done && node --check server.cjs && node --check electron/main.cjs && node --check electron/preload.cjs && node --check tools/playtest.cjs && bash -n tools/verify.sh && for f in tools/*.mjs tools/scenarios.js; do node --check \"$f\" || exit 1; done && echo OK"
   },

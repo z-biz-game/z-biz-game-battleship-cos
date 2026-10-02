@@ -128,6 +128,35 @@ BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 
 ---
 
+## 上线的到底是哪一批文件
+
+这个仓没有构建步骤：浏览器加载的就是盘上这些文件，`Pages` 却只上传 `tools/assemble-site.sh`
+拷进 `_site` 的那一份。于是有一条本地**结构性看不见**的坏法——页面后来引用了新文件，
+而拷贝清单还停在旧的三行。这一轮就撞上了：`manifest.webmanifest`、`sw.js`、`assets/icons/*`
+全都进了页面，却没有一条进 artifact，线上逐个 404，而仓里 119 项浏览器检查加引擎测试**一条都不红**，
+因为没有任何一步在"清单只拷三个路径"的那个环境里加载过页面。PWA 那一层（可安装、离线打开）
+在仓库里是完整的，在线上等于没写过——`js/pwa-register.js` 的注册失败是被 `catch` 静音的，
+所以它连报错都不给。
+
+现在的形状是：拷哪些文件只有 `tools/assemble-site.sh` 一处说得出，`pages.yml` 和本地闸调的是
+同一支脚本，所以闸验的就是要上线的那份。`node tools/deploy-set.mjs`（`npm run deploy-set`）
+跑四段共 36 条断言，钉在文件里的 `EXPECT_CHECKS = 18` 与 `EXPECT_ROWS = 36` 保证"闸自己缩水"
+不可能伪装成绿：
+
+- **A 同源**：`pages.yml` 必须确实在用那份共享清单，否则 CI 拷的是第二份清单，闸验的就不是上线那份。
+- **B 可达**：`index.html` 的每个 `href`/`src`、manifest 的 `icons`/`screenshots`/`shortcuts`，
+  以及 js 里 `new URL('sw.js', document.baseURI)` 这类**只在运行时才拼出来**的路径，
+  逐个必须在产物里存在且非 0 字节。上一轮线上 404 的 `sw.js` 正是靠这一条才被看见的——
+  只扫 HTML 的检查看不到它。0 条引用也算红（解析不到不等于全都齐）。
+- **C 不许绝对路径**：`/sw.js` 这种写法会在 Pages 的 `/<仓名>/` 前缀下跳出项目站点。
+- **D 位图不许说谎**：manifest 声明的 `sizes` 必须等于 PNG IHDR 里的真实宽高。
+
+阴性对照跑过两次，都按预期红并点名缺的是哪个文件：从产物里挪走 `sw.js` → `B8` 红并且出处写
+`js/pwa-register.js`（rc=1）；挪走 `assets/icons/icon-512.png` → `B8` 红并且出处写
+`manifest.icons`（rc=1）；放回原字节后 rc 回到 0。这一段也进了 `tools/verify.sh`（在浏览器闸
+之前跑，不占 Chrome）和 `ci.yml` 的 check job，`pages.yml` 里则对**即将上传的那个 `_site`**
+再跑一次。
+
 ## 目录
 
 ```
@@ -143,7 +172,7 @@ js/theme.js            配色与动效令牌（五档五配色）
 js/audio/synth.js      WebAudio 合成音效，零音频文件
 js/store.js            localStorage 单键存档：种子 + 墨（游程编码）+ 这一局的花费
 js/main.js             装配、菜单、事件、window.battleship 调试面
-tools/                 engine-test / balance / playtest(CDP) / scenarios / verify.sh
+tools/                 engine-test / balance / playtest(CDP) / scenarios / deploy-set / assemble-site / verify.sh
 ```
 
 ## 许可
