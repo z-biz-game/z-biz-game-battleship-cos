@@ -140,22 +140,49 @@ BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 
 现在的形状是：拷哪些文件只有 `tools/assemble-site.sh` 一处说得出，`pages.yml` 和本地闸调的是
 同一支脚本，所以闸验的就是要上线的那份。`node tools/deploy-set.mjs`（`npm run deploy-set`）
-跑四段共 36 条断言，钉在文件里的 `EXPECT_CHECKS = 18` 与 `EXPECT_ROWS = 36` 保证"闸自己缩水"
+跑四段共 66 条断言，钉在文件里的 `EXPECT_CHECKS = 42` 与 `EXPECT_ROWS = 66` 保证"闸自己缩水"
 不可能伪装成绿：
 
 - **A 同源**：`pages.yml` 必须确实在用那份共享清单，否则 CI 拷的是第二份清单，闸验的就不是上线那份。
-- **B 可达**：`index.html` 的每个 `href`/`src`、manifest 的 `icons`/`screenshots`/`shortcuts`，
-  以及 js 里 `new URL('sw.js', document.baseURI)` 这类**只在运行时才拼出来**的路径，
-  逐个必须在产物里存在且非 0 字节。上一轮线上 404 的 `sw.js` 正是靠这一条才被看见的——
+- **B 可达**：入口只有 `index.html` 声明的取径，然后**沿着取径自己往下走**——每解析出一条
+  `.js`/`.css`，就把那一站也扫一遍：CSS 的 `url()`、模块图里的每一条 `import`、js 里
+  `new URL(x, document.baseURI)` 与 `new URL(x, import.meta.url)` 这两类**只在运行时才拼出来**
+  的路径（后者以本文件为基，`js/render/board.js` 的两张纹理就是这么进视野的），以及
+  `navigator.serviceWorker.register` 和它的 `scope`。42 条引用逐条带出处，用
+  `DEPLOY_SET_DUMP=1` 打印成一张表，对着源码能核。上一轮线上 404 的 `sw.js` 靠这一条才被看见——
   只扫 HTML 的检查看不到它。0 条引用也算红（解析不到不等于全都齐）。
 - **C 不许绝对路径**：`/sw.js` 这种写法会在 Pages 的 `/<仓名>/` 前缀下跳出项目站点。
-- **D 位图不许说谎**：manifest 声明的 `sizes` 必须等于 PNG IHDR 里的真实宽高。
+- **D 位图不许说谎**：manifest 里凡是声明了 `sizes` 的 PNG——`icons`、`screenshots`、以及
+  `shortcuts` 自带的那两张 96×96——逐个拿 IHDR 的真实宽高对账，B 段与 D 段吃同一份收集结果。
 
-阴性对照跑过两次，都按预期红并点名缺的是哪个文件：从产物里挪走 `sw.js` → `B8` 红并且出处写
-`js/pwa-register.js`（rc=1）；挪走 `assets/icons/icon-512.png` → `B8` 红并且出处写
-`manifest.icons`（rc=1）；放回原字节后 rc 回到 0。这一段也进了 `tools/verify.sh`（在浏览器闸
-之前跑，不占 Chrome）和 `ci.yml` 的 check job，`pages.yml` 里则对**即将上传的那个 `_site`**
-再跑一次。
+九把阳性对照跑在 `_tmp-battleship-ds-knife-r3.log`（末行 `KNIFE_SELFTEST rc=0`；跑在 `59d9251`
+那一棵树上，也就是闸的最后一次改动，文档这一笔不动它的输入）。四把测"清单与扫描"：S1 让
+`assemble` 不拷 `assets` → 15 条 B8 红（出处点名到 `index.html`、`manifest.*`、`css/game.css`、
+`js/render/board.js` 四种来路）加一条 E1 的 rows 落差；S2 不拷
+`sw.js` → 红并且出处 `js/pwa-register.js`；S3 把 CSS 的 `url()` 写成绝对路径 → B7 红；S4 把
+`main.js` 的一条 `import` 改名 → B8 与 B6（读不到=这一站没扫）一起红。三把测这一轮补的坏形状：
+
+- **散文被当成引用**：`js/pwa-register.js` 的一行注释（`// './sw.js' 而不是 '/sw.js'`）被正则
+  认成一条路径，把钉住的 18 顶成 19——远端 run#7 的红就是它，跟任何一次真实改动都无关。现在
+  扫之前先去注释（CSS 只去块注释，因为 `url(//host/x)` 那种写法合法），S6 那一刀往注释里塞
+  `'./prose-only.txt'` 与 `'../assets/textures/nope.png'`，必须仍绿、条数仍 42。
+- **目录型引用塌成空串**：`rel('./#resume')` 削成 `''`，`present('')` 去 stat 产物目录——目录
+  永远在、size 永远 >0，那是两条假绿。现在只有 `./`、`.`、`''` 归到根文档并且真的去查
+  `index.html`，别的 `foo/` 归到 `foo/index.html`。这一条的规则是被刀逼成这样的：第一版写成
+  "任何以斜杠结尾都塌成 index.html"，S5（把 shortcut 指到一个不存在的子目录）当场 `DS_RC=0`，
+  那条 INERT 读数留在 `_tmp-battleship-ds-knife-r1.log`，不删。
+- **扫描名单靠手打**：S8（改 `js/sw-register.js` 的注册目标）与 S9（把 CSS 的纹理名改没）落在
+  `911ab05` 那一版闸上重放，跑在它自己那一版的树上，**读数逐字节不变**（19 条引用 / 37 rows /
+  同样两条 FAIL）——那一版根本没在看这两站；同一两刀在新闸上各红一条并且点名出处。旧闸在全绿
+  时也没绿过（就是上面那条注释引用），所以这里做不出"旧闸绿→新闸红"的对照，能做出的对账是
+  读数一字不动，那个更硬。
+
+最后一把 S7 是闸自己的秤：从 manifest 删掉 `icon-512` 那一条，读数从 42/66 掉到 41/63（少一条
+B8 加那张的 D1/D2），而 `B5`（要有 >=512 的图标）此刻仍然绿，因为 `maskable-512` 还在——所以
+钉住 rows 才有意义。这一段也进了 `tools/verify.sh`（在浏览器闸之前跑，不占 Chrome）和 `ci.yml`
+的 check job，`pages.yml` 里则对**即将上传的那个 `_site`** 再跑一次。整机跑在
+`_tmp-battleship-verify-r3.log`：deploy-set 42 条引用 / 66 rows 全绿，其后 engine/gen/play/hint/
+paint/erase/undo/save/resume/layout 十腿共 119 项检查、0 失败，`BS_VERIFY_RC=0`。
 
 ## 目录
 

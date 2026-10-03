@@ -170,9 +170,14 @@
 npm run check                       # 语法门禁
 node tools/engine-test.mjs 12       # §3 §5 §6：soundness / 计数对账 / verify 收拒 / 出题三道门
 SAMPLES=12 node tools/balance.mjs   # §9：分位表、命中率、p95、阶梯与漂移门禁
-npm run verify                      # §10 §11：10 个浏览器场景，115 项断言
+npm run verify                      # 部署集闸 66 条 + §10 §11 的十个浏览器场景（119 项）
 BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 ```
 
 `verify.sh` 自己起 5271 上的服务、自己开 9371 上的 Chrome、自己收尾；
 `NO RESULT` 是超时不是通过。
+
+部署集闸那 66 条跑的是**产物**而不是仓库根（`tools/assemble-site.sh` 拷出来的那一份），
+所以它是全站里唯一一条"清单落后于页面"能照见的闸；口径与九把阳性对照（含两把旧闸重放的
+逐字节对账）写在 README「上线的到底是哪一批文件」一节，读数住在
+`_tmp-battleship-verify-r3.log` 与 `_tmp-battleship-ds-knife-r3.log` 里。
