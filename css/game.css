@@ -104,6 +104,11 @@ main { flex: 1; }
 
 /* 对局台 */
 #view-game { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-card); align-items: start; }
+/* id 级选择器的特异性 (1,0,0) 高于上面那条 .view[hidden] (0,2,0)，所以上面那条对这一节
+   整条失效：带 hidden 的对局台照样排版（320 档实测 section#view-game display=grid 280x864，
+   里面那枚还没被 JS 量过尺寸的 <canvas> 以其默认 300px 把版面顶到 scrollW=367）。
+   下面三枚 veil 用的是同一个写法，唯独这一节漏了。 */
+#view-game[hidden] { display: none; }
 .stage { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-card); padding: var(--space-card); }
 .stage-head { display: flex; align-items: center; gap: 10px; margin-bottom: var(--space-inner); flex-wrap: wrap; }
 .stage-head b { font-size: 16px; }
@@ -232,4 +237,22 @@ body {
 /* 贴边的固定/吸底元素自己让开主屏条，别让 home indicator 压住按钮 */
 .fixed-bottom, .bottom-bar, .hud-bottom, footer.app-footer {
   padding-bottom: calc(var(--sab) + env(safe-area-inset-bottom, 0px));
+}
+
+/* ════════════════════════════════════════════════════════════════
+   手机档 320 的两条横向出屏，各自一条证据、各自一处修法（本地导出 + CDP
+   setDeviceMetricsOverride dpr=3，读数在 _tmp-hidden-check-r1.log 与 _tmp-battleship-measure-r1.log）：
+     一、带 hidden 的对局台仍在排版（#view-game{display:grid} 特异性压过 .view[hidden]）。
+         里面那枚没被 JS 量过尺寸的 <canvas> 以其默认 300px 顶宽版面 —— 已在上面那条
+         #view-game[hidden]{display:none} 治掉，菜单页的 18 枚控件当场回到 10 枚。
+     二、剩下这一条：.topbar 是不换行的 space-between flex，.brand 的 26px 标题 +
+         .top-actions 那 216@150 的一排（每枚都吃下面 button{min-height:44px;min-width:44px}
+         的指尖下限），320 装不下两栏，于是 #btn-fullscreen 落在 x=322、整枚出屏（vw 被撑到 367）。
+   下限不能撤（撤了就退回"想按静音结果按到减弱动效"那一次），所以让这一行会折。
+   竖向多占一行不是缺陷，横向出屏才是。
+   ════════════════════════════════════════════════════════════════ */
+@media (max-width: 420px) {
+  .topbar { flex-wrap: wrap; row-gap: 8px; }
+  .brand { min-width: 0; }
+  .top-actions { flex-wrap: wrap; row-gap: 6px; }
 }
