@@ -151,10 +151,13 @@ const dirOf = (r) => {
 };
 // 目录或纯片段（'./'、'./#resume'）浏览器要的是那份文档本身。以前 rel() 把它们削成 ''，
 // present('') 去 stat 产物目录——目录永远在、size 永远 > 0，那两条是假绿，一条也没验。
+// 只认"文档根"这一种目录：'foo/' 不许跟着塌成 index.html，S5 那一刀测的就是这里——把
+// shortcut 指到一个不存在的子目录时，浏览器要的是 foo/index.html，那就必须去查它。
 const resolveSpec = (specRaw, at) => {
   const s = String(specRaw).split('?')[0].split('#')[0];
-  if (s === '' || s === '.' || s === './' || s.endsWith('/')) return 'index.html';
-  return at ? path.posix.normalize(path.posix.join(at, s)) : s.replace(/^\.\//, '');
+  if (s === '' || s === '.' || s === './') return 'index.html';
+  const joined = at ? path.posix.normalize(path.posix.join(at, s)) : s.replace(/^\.\//, '');
+  return joined.endsWith('/') ? joined + 'index.html' : joined;
 };
 
 for (const m of html.matchAll(/(?:href|src)="([^"]+)"/g)) push('index.html', m[1], '');
