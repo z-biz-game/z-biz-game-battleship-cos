@@ -94,8 +94,8 @@ DS_RC=$?
 DS_ROWS=$(sed -n 's/^rows: \([0-9]*\) .*$/\1/p' _tmp-verify-deploy-set.log | tail -1)
 cat _tmp-verify-deploy-set.log
 [ "$DS_RC" = 0 ] || { echo "deploy-set FAILED rc=$DS_RC" >&2; FAILED=1; }
-[ "${DS_ROWS:-0}" = "${DEPLOY_SET_ROWS_WANT:-36}" ] || {
-  echo "deploy-set 断言条数 ${DS_ROWS:-读不到} ≠ 钉住的 ${DEPLOY_SET_ROWS_WANT:-36}" >&2; FAILED=1; }
+[ "${DS_ROWS:-0}" = "${DEPLOY_SET_ROWS_WANT:-66}" ] || {
+  echo "deploy-set 断言条数 ${DS_ROWS:-读不到} ≠ 钉住的 ${DEPLOY_SET_ROWS_WANT:-66}" >&2; FAILED=1; }
 
 for s in ${SCENARIOS:-engine gen play hint paint erase undo save resume layout}; do
   echo "=== $s ==="
