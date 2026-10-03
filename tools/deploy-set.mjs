@@ -29,9 +29,9 @@ const ASSEMBLE = 'tools/assemble-site.sh';
 // 说明引用解析不出来的那部分被悄悄放过了。对着 DEPLOY_SET_DUMP=1 的出处表能逐条核。
 const EXPECT_CHECKS = 42;
 // 全绿时这个闸实际跑的断言条数（A/B/D 三段之和）。钉住它，"少一条断言"就不可能是绿的：
-// 删掉 manifest 里的一张图标会同时少一条 B8 与那张的 D1/D2 两行——那条路径缺文件本来就该
-// 红，但 rows 能漂就是闸在缩水的信号，所以两个数一起钉。这一版的实测落差记在刀架日志里
-// （_tmp-battleship-ds-knife-r1.log 的 S7 那一刀），不是凭记忆写的。
+// 删掉 manifest 里的一张图标会同时少一条 B8 与那张的 D1/D2 两行（实测 42/66 → 41/63，见
+// 刀架日志的 S7）：那条路径缺文件本来就该红，但 rows 能漂就是闸在缩水的信号，所以两个数
+// 一起钉。落差是量出来的，不是推的。
 const EXPECT_ROWS = 66;
 
 let rows = 0;
