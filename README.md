@@ -184,6 +184,17 @@ B8 加那张的 D1/D2），而 `B5`（要有 >=512 的图标）此刻仍然绿�
 `_tmp-battleship-verify-r3.log`：deploy-set 42 条引用 / 66 rows 全绿，其后 engine/gen/play/hint/
 paint/erase/undo/save/resume/layout 十腿共 119 项检查、0 失败，`BS_VERIFY_RC=0`。
 
+远端这一轮两头都补齐了。Actions run#8（`9e36367`）的 `CI` 与 `Deploy to GitHub Pages` 均
+`completed / success`——CI 的两个 job 各 8 步全绿（其中一个 job 的名字就写着 both URL shapes），
+Pages 的 build 8 步加 deploy 3 步全绿，而 `node tools/deploy-set.mjs _site` 正是跑在即将上传的
+那个目录上；上一轮 run#7 那条红（Browser gate 的 root shape，19 顶 18）到此收口。runner 自己
+数出来的条数**没取到**：这把 PAT 没有 actions 读域，取 job 日志回 401，所以这里只引 step 状态，
+不代 runner 报数。线上那头另有 `_tmp-battleship-live-gate-r2.log`：把同一套取径搬到
+`https://z-biz-game.github.io/z-biz-game-battleship-cos/` 上逐个真去要一遍——42 条引用、扫过
+17 个文件、去重后 31 个目标，31/31 都是 HTTP 200 且字节非空；脚本还对着 `DEPLOY_SET_DUMP=1`
+的出处表比了两份口径各自解析出来的目标集合，读数是 `逐条一致`、`LIVE_GATE_RC=0`。这一条不是
+仓里自己跟自己比：它验的是 Pages 真的把那些字节吐出来了。
+
 ## 目录
 
 ```
