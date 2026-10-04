@@ -181,8 +181,8 @@ BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 B8 加那张的 D1/D2），而 `B5`（要有 >=512 的图标）此刻仍然绿，因为 `maskable-512` 还在——所以
 钉住 rows 才有意义。这一段也进了 `tools/verify.sh`（在浏览器闸之前跑，不占 Chrome）和 `ci.yml`
 的 check job，`pages.yml` 里则对**即将上传的那个 `_site`** 再跑一次。整机跑在
-`_tmp-battleship-verify-r3.log`：deploy-set 42 条引用 / 66 rows 全绿，其后 engine/gen/play/hint/
-paint/erase/undo/save/resume/layout 十腿共 119 项检查、0 失败，`BS_VERIFY_RC=0`。
+`_tmp-fleet-final-battleship-r1.log`：deploy-set 42 条引用 / 68 rows 全绿，其后 engine/gen/play/hint/
+paint/erase/undo/save/resume/layout 十腿共 119 项检查、0 失败；rc 记在同目录 `_tmp-fleet-final-r1.log`。
 
 远端这一轮两头都补齐了。Actions run#8（`9e36367`）的 `CI` 与 `Deploy to GitHub Pages` 均
 `completed / success`——CI 的两个 job 各 8 步全绿（其中一个 job 的名字就写着 both URL shapes），
