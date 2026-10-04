@@ -140,7 +140,7 @@ BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 
 现在的形状是：拷哪些文件只有 `tools/assemble-site.sh` 一处说得出，`pages.yml` 和本地闸调的是
 同一支脚本，所以闸验的就是要上线的那份。`node tools/deploy-set.mjs`（`npm run deploy-set`）
-跑四段共 66 条断言，钉在文件里的 `EXPECT_CHECKS = 42` 与 `EXPECT_ROWS = 66` 保证"闸自己缩水"
+跑四段共 68 条断言，钉在文件里的 `EXPECT_CHECKS = 42` 与 `EXPECT_ROWS = 68` 保证"闸自己缩水"
 不可能伪装成绿：
 
 - **A 同源**：`pages.yml` 必须确实在用那份共享清单，否则 CI 拷的是第二份清单，闸验的就不是上线那份。
@@ -177,7 +177,7 @@ BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
   时也没绿过（就是上面那条注释引用），所以这里做不出"旧闸绿→新闸红"的对照，能做出的对账是
   读数一字不动，那个更硬。
 
-最后一把 S7 是闸自己的秤：从 manifest 删掉 `icon-512` 那一条，读数从 42/66 掉到 41/63（少一条
+最后一把 S7 是闸自己的秤：从 manifest 删掉 `icon-512` 那一条，读数从 42/68 掉到 41/65（少一条
 B8 加那张的 D1/D2），而 `B5`（要有 >=512 的图标）此刻仍然绿，因为 `maskable-512` 还在——所以
 钉住 rows 才有意义。这一段也进了 `tools/verify.sh`（在浏览器闸之前跑，不占 Chrome）和 `ci.yml`
 的 check job，`pages.yml` 里则对**即将上传的那个 `_site`** 再跑一次。整机跑在
