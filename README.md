@@ -106,7 +106,7 @@ BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 
 ## 难度是量出来的
 
-`npm run balance`（每档 24 个种子，2026-09-27，空载机器；CI 跑的就是这一档配置——`.github/workflows/ci.yml` 的「Difficulty ladder is still measured」那一步带着 `SAMPLES: "24"`，本仓 HEAD `5b06925` 的 run 37459618787 读回来是绿）：
+`npm run balance`（每档 24 个种子，2026-09-27，空载机器；CI 跑的就是这一档配置——`.github/workflows/ci.yml` 的「Difficulty ladder is still measured」那一步带着 `SAMPLES: "24"`，`5b06925` 那一笔的 run 37459618787 读回来是绿）：
 
 | 档 | 盘面 | 舰队 | 留多少线索 | 分数带（选取目标） | 实测中位 | 命中 | 平均抽几次（最坏） | 出题 p95 | 最慢 |
 |---|---|---|---|---|---|---|---|---|---|
