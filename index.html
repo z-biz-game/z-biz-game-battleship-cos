@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- theme-color 与 js/theme.js 的 Palette.bgTop 同值：地址栏和系统状态条该和这片海是同一个颜色。 -->
+  <meta name="theme-color" content="#060B16">
+  <meta name="color-scheme" content="dark">
+  <title>海战推演 · Battleship Solitaire — 零猜测舰队推理</title>
+  <meta name="description" content="给出行与列的船格数、以及一支已知长度的舰队。船与船连对角都不能碰。不靠猜，靠推。">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="海战推演">
+  <!-- 社交卡：og:image 必须是绝对 URL（爬虫不会替你补域名），所以这里写死部署站。
+       盘上那张图由 assets/gen/make_art.py 画，路径与 manifest.webmanifest 里的截图同源。 -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="海战推演 Battleship Solitaire">
+  <meta property="og:title" content="海战推演 · 零猜测舰队推理">
+  <meta property="og:description" content="每一局都保证唯一解、且一条都不猜就能把整支舰队推到底。难度是量出来的，不是文案写的。">
+  <meta property="og:url" content="https://z-biz-game.github.io/z-biz-game-battleship-cos/">
+  <meta property="og:image" content="https://z-biz-game.github.io/z-biz-game-battleship-cos/assets/img/og-cover.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://z-biz-game.github.io/z-biz-game-battleship-cos/assets/img/og-cover.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <!-- 图标全部是真 PNG（assets/gen/make_art.py 画的），那张内联 SVG 已经退场：
+       它进不了 iOS 主屏、也进不了 PWA 安装面板，而这两处才是图标值钱的地方。 -->
+  <link rel="icon" href="assets/icons/favicon.ico" sizes="48x48">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="assets/icons/icon-48.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>海战推演 <span class="mono">Battleship</span></h1>
+        <p class="sub">零猜测舰队推理 · 行列船格数 · 船不碰船</p>
+      </div>
+      <div class="top-actions">
+        <button id="btn-pause" class="ghost" type="button" aria-pressed="false" title="暂停这一局（P 或 空格）">暂停</button>
+        <button id="btn-sound" class="ghost" type="button" aria-pressed="true" title="声音开关（M）">声音</button>
+        <button id="btn-motion" class="ghost" type="button" aria-pressed="false" title="减弱动效">减弱动效</button>
+        <button id="btn-fullscreen" class="ghost" type="button" aria-pressed="false" title="全屏（F）">全屏</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- 菜单 -->
+      <section id="view-menu" class="view">
+        <div class="menu-hero">
+          <h2>把舰队摆进海里</h2>
+          <p>题面给你三样东西：每行每列有几个船格、舰队由哪几条船组成、以及"船与船连对角都不许碰"。剩下的全是推理。</p>
+        </div>
+
+        <div class="menu-cols">
+          <div class="col">
+            <h3>选一个海域</h3>
+            <div id="tier-list" class="tiers"></div>
+            <div id="resume-card" class="resume" hidden>
+              <div>
+                <b id="resume-name">未命名的对局</b>
+                <p id="resume-meta" class="mono"></p>
+              </div>
+              <button id="btn-resume" type="button">继续</button>
+            </div>
+          </div>
+
+          <div class="col">
+            <h3>最好成绩</h3>
+            <ul id="record-list" class="records"></ul>
+          </div>
+
+          <div class="col">
+            <h3>规则只有这几条</h3>
+            <ol class="rules">
+              <li>舰队长度题面给定，一条不多一条不少。</li>
+              <li>船是直线的一段，横竖都行，不能拐弯。</li>
+              <li>船与船之间连对角都不许碰。</li>
+              <li>数字是这一行/列里<b>船格</b>的个数，不是船的条数。</li>
+              <li>空白的菱形 <span class="dia">◆</span> 表示这条线题面没给数。</li>
+              <li>没点过的格子就是水——把每条船放对即胜。</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <!-- 对局 -->
+      <section id="view-game" class="view" hidden>
+        <div class="stage">
+          <div class="stage-head">
+            <b id="stat-name">—</b>
+            <span id="stat-tier" class="chip"></span>
+            <span id="stat-fleet" class="chip mono"></span>
+            <span class="spacer"></span>
+            <span id="stat-time" class="mono">00:00</span>
+          </div>
+
+          <div id="board-wrap">
+            <canvas id="board" data-mode="ship" role="img" aria-label="海战推演盘面：行列船格数与舰队位置"></canvas>
+            <div id="busy-veil" hidden><p class="mono">声呐扫描中…</p></div>
+            <div id="pause-veil" hidden>
+              <div class="pause-card">
+                <h3>已暂停</h3>
+                <p class="mono">计时停在 <span id="pause-time">00:00</span></p>
+                <div class="acts">
+                  <button id="btn-resume-play" type="button">继续推演</button>
+                </div>
+              </div>
+            </div>
+            <div id="win-veil" hidden>
+              <div class="win-card">
+                <h3>舰队全部落位</h3>
+                <p id="win-meta" class="mono"></p>
+                <p id="win-record" class="record-line"></p>
+                <div class="acts">
+                  <button id="btn-again" type="button">再来一局</button>
+                  <button id="btn-menu-2" type="button">返回海图</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p id="conflict-line" class="conflict-line" aria-live="polite"></p>
+        </div>
+
+        <aside class="panel">
+          <div class="modes" role="group" aria-label="画笔模式">
+            <button id="btn-mode-ship" class="mode is-on" type="button">船格</button>
+            <button id="btn-mode-water" class="mode" type="button">水格</button>
+            <button id="btn-mode-cycle" class="mode" type="button">轮换</button>
+          </div>
+          <p class="mode-note">拖过一片格子就是批量刷；同一支笔再点一次已经写过的格子，是把墨擦掉。</p>
+
+          <div class="acts">
+            <button id="btn-hint" type="button">提示<span id="hint-count" class="count mono">0</span></button>
+            <button id="btn-undo" type="button">撤销</button>
+            <button id="btn-restart" type="button">重开此局</button>
+            <button id="btn-new" type="button">新的一局</button>
+            <button id="btn-menu" type="button">海图</button>
+          </div>
+
+          <div class="stats">
+            <div class="stat"><span>船格</span><b id="stat-ships" class="mono">0 / 0</b></div>
+            <div class="stat"><span>已封死的船</span><b id="stat-docked" class="mono">0</b></div>
+            <div class="stat"><span>剩下的舰队</span><b id="stat-remaining" class="mono">—</b></div>
+            <div class="stat"><span>线索</span><b id="stat-clues" class="mono">0</b></div>
+            <div class="stat"><span>步数</span><b id="stat-moves" class="mono">0</b></div>
+            <div class="stat"><span>提示</span><b id="stat-hints" class="mono">0</b></div>
+            <div class="stat"><span>实测难度</span><b id="stat-score" class="mono">0.0</b></div>
+          </div>
+
+          <div class="hint-box">
+            <b id="hint-rule">按「提示」要一条当下成立的推理</b>
+            <p id="hint-line"></p>
+          </div>
+
+          <div class="legend">
+            <span><i class="sw hull"></i>船格</span>
+            <span><i class="sw water"></i>水格</span>
+            <span><i class="sw unknown"></i>未定</span>
+            <span><i class="sw bad"></i>与题面冲突</span>
+          </div>
+          <p class="keyhint mono">H 提示 · Z 撤销 · 1/2/3 换笔 · N 新的一局 · R 重开此局 · P 暂停 · M 静音 · F 全屏 · ? 玩法</p>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p>本地零依赖运行。引擎不变量由 <code>tools/engine-test.mjs</code> 证明，难度由 <code>tools/balance.mjs</code> 量出来，浏览器里的这一步由 <code>tools/verify.sh</code> 跑。</p>
+      <button id="btn-reset" class="link" type="button">清空存档</button>
+    </footer>
+  </div>
+
+  <!-- 注册服务工作者：普通脚本而不是模块，理由见文件头（它必须比整条引擎依赖图更早开始，
+       而且任何一处模块解析失败都不该连累"离线还能打开"）。 -->
+  <script src="js/pwa-register.js"></script>
+  <script type="module" src="js/main.js"></script>
+  <script src="js/sw-register.js"></script>
+</body>
+</html>

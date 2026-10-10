@@ -1,0 +1,138 @@
+{
+ "files": {
+  "assets/icons/apple-touch-icon.png": {
+   "bytes": 31841,
+   "h": 180,
+   "w": 180
+  },
+  "assets/icons/favicon.ico": {
+   "bytes": 7370,
+   "entries": [
+    16,
+    32,
+    48
+   ],
+   "h": 48,
+   "w": 48
+  },
+  "assets/icons/icon-1024.png": {
+   "bytes": 257168,
+   "h": 1024,
+   "w": 1024
+  },
+  "assets/icons/icon-16.png": {
+   "bytes": 683,
+   "h": 16,
+   "w": 16
+  },
+  "assets/icons/icon-180.png": {
+   "bytes": 31841,
+   "h": 180,
+   "w": 180
+  },
+  "assets/icons/icon-192.png": {
+   "bytes": 34857,
+   "h": 192,
+   "w": 192
+  },
+  "assets/icons/icon-32.png": {
+   "bytes": 2157,
+   "h": 32,
+   "w": 32
+  },
+  "assets/icons/icon-48.png": {
+   "bytes": 4377,
+   "h": 48,
+   "w": 48
+  },
+  "assets/icons/icon-512.png": {
+   "bytes": 122989,
+   "h": 512,
+   "w": 512
+  },
+  "assets/icons/icon-64.png": {
+   "bytes": 7158,
+   "h": 64,
+   "w": 64
+  },
+  "assets/icons/icon-96.png": {
+   "bytes": 13016,
+   "h": 96,
+   "w": 96
+  },
+  "assets/icons/icon-maskable-192.png": {
+   "bytes": 25163,
+   "h": 192,
+   "w": 192
+  },
+  "assets/icons/icon-maskable-512.png": {
+   "bytes": 94124,
+   "h": 512,
+   "w": 512
+  },
+  "assets/img/menu-hero.png": {
+   "bytes": 81152,
+   "h": 320,
+   "w": 1200
+  },
+  "assets/img/og-cover.png": {
+   "bytes": 218511,
+   "h": 630,
+   "w": 1200
+  },
+  "assets/textures/sea-depth-256.png": {
+   "bytes": 74531,
+   "h": 256,
+   "w": 256
+  },
+  "assets/textures/sea-depth.png": {
+   "bytes": 267680,
+   "h": 512,
+   "w": 512
+  },
+  "assets/textures/sonar-sweep.png": {
+   "bytes": 14262,
+   "h": 512,
+   "w": 512
+  }
+ },
+ "generated_by": "assets/gen/make_art.py",
+ "motif": "night-sea-sonar",
+ "palette": {
+  "accent": "#5FE3C8",
+  "accentEdge": "#A9F5E4",
+  "accentSoft": "rgba(95,227,200,0.14)",
+  "artDeep": "#03060D",
+  "artFoam": "#D9F5EE",
+  "artSteel": "#7FA8C9",
+  "bgBottom": "#0B1A2B",
+  "bgTop": "#060B16",
+  "ease": "cubic-bezier(0.22, 0.61, 0.36, 1)",
+  "error": "#FF5C7A",
+  "focus": "rgba(123,184,255,0.16)",
+  "hint": "#7BB8FF",
+  "hull": "#44688C",
+  "hullDeep": "#1C314A",
+  "hullEdge": "#A9CBE4",
+  "info": "#7BB8FF",
+  "ink": "#EEF6FB",
+  "inkDim": "rgba(238,246,251,0.62)",
+  "inkFaint": "rgba(238,246,251,0.34)",
+  "line": "#1E3A52",
+  "lineHeavy": "#2E5573",
+  "pencil": "rgba(210,232,244,0.32)",
+  "ripple": "rgba(169,203,228,0.55)",
+  "spring": "cubic-bezier(0.34, 1.45, 0.64, 1)",
+  "success": "#3DDC91",
+  "surface": "#0D1B2A",
+  "surfaceLift": "#132639",
+  "tintBad": "rgba(255,92,122,0.30)",
+  "tintDone": "#4E7F92",
+  "tintEdge": "rgba(238,246,251,0.86)",
+  "unlit": "#122437",
+  "warn": "#FFB05C",
+  "water": "#0A1A24",
+  "waterEdge": "rgba(95,227,200,0.18)"
+ },
+ "palette_source": "js/theme.js:Palette"
+}
