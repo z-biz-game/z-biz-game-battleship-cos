@@ -55,7 +55,7 @@ jobs:
         with:
           node-version: 22
 
-      # 119 项浏览器断言（10 个场景 engine gen play hint paint erase undo save resume layout）在两种 URL 形态下的条数逐条相同，是 2026-09-28 在本机实跑出来的，
+      # 130 项浏览器断言（10 个场景 engine gen play hint paint erase undo save resume layout）在两种 URL 形态下的条数逐条相同，是 2026-09-28 在本机实跑出来的，
       # 不是引用。在这一步之前 CI 一步都没跑过 tools/verify.sh：闸是写了给人看的，不是给人跑的。
       - name: Browser gate, root shape
         env:

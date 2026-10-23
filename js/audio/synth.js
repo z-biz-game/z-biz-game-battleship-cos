@@ -100,6 +100,11 @@ export const Sound = {
     tone({ f0: 760, f1: 1020, dur: 0.16, type: 'sine', gain: 0.16 });
     tone({ f0: 1140, dur: 0.1, type: 'sine', gain: 0.07, delay: 0.06 });
   },
+  // 拒绝：一声闷短音。它不刺耳——刺耳是 conflict 的活儿——但一定要响：
+  // "没东西可撤"与"键坏了"在玩家眼里是同一件事，静默等于没接上。
+  reject() {
+    tone({ f0: 200, f1: 160, dur: 0.1, type: 'sine', gain: 0.1 });
+  },
   // 四音琶音：舰队一艘一艘回港。换成纯正弦，让尾巴听上去像回声而不是琴键。
   win() {
     [523, 659, 784, 1046].forEach((f, i) => tone({ f0: f, dur: 0.3, type: 'sine', gain: 0.16, delay: i * 0.09 }));

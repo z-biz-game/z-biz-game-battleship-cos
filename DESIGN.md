@@ -170,7 +170,7 @@
 npm run check                       # 语法门禁
 node tools/engine-test.mjs 12       # §3 §5 §6：soundness / 计数对账 / verify 收拒 / 出题三道门
 SAMPLES=12 node tools/balance.mjs   # §9：分位表、命中率、p95、阶梯与漂移门禁
-npm run verify                      # 部署集闸 66 条 + §10 §11 的十个浏览器场景（119 项）
+npm run verify                      # 部署集闸 68 条 + §10 §11 的十个浏览器场景（130 项）
 BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 ```
 

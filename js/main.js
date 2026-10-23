@@ -32,6 +32,7 @@ const el = {
   resumeName: $('#resume-name'),
   resumeMeta: $('#resume-meta'),
   btnResume: $('#btn-resume'),
+  btnUndo: $('#btn-undo'),
   statName: $('#stat-name'),
   statTier: $('#stat-tier'),
   statFleet: $('#stat-fleet'),
@@ -57,6 +58,8 @@ const el = {
 const view = new BoardView(el.canvas);
 let game = null;
 let startedAt = 0;
+// 这一局的胜利有没有记过分。正解可以被撤销掉再赢回来——那时候不该把"解过的盘数"记成 2。
+let winRecorded = false;
 let baseElapsed = 0;
 let paused = false;
 // 计时标签的节流放在**帧里**而不是 setInterval 里：后台标签的 interval 会被压到 1Hz 以下
@@ -143,13 +146,49 @@ function syncStats() {
   el.statTime.textContent = fmtMs(clock());
 }
 
-function afterStep(soundKey) {
-  if (soundKey) Sound[soundKey]?.();
-  if (game && game.diag.conflicts > 0) Sound.conflict();
+// 反馈由"发生了什么"驱动，不由"分数变了"驱动：事件名是枚举，声音由一张表查出来。
+// 各处分支不再各写各的 Sound.xxx()——加一个事件只改这张表一处。
+const GameEvent = {
+  PAINT: 'paint',
+  FLEET: 'fleet',
+  ERASE: 'erase',
+  UNDO: 'undo',
+  HINT: 'hint',
+  CONFLICT: 'conflict',
+  WIN: 'win',
+  REJECT: 'reject',
+};
+
+// 事件 → 音效 cue。查表而不是 switch：这张表就是"什么事件出什么声"的全部真相。
+const EVENT_CUE = {
+  [GameEvent.PAINT]: 'paint',
+  [GameEvent.FLEET]: 'fleet',
+  [GameEvent.ERASE]: 'erase',
+  [GameEvent.UNDO]: 'undo',
+  [GameEvent.HINT]: 'hint',
+  [GameEvent.CONFLICT]: 'conflict',
+  [GameEvent.WIN]: 'win',
+  [GameEvent.REJECT]: 'reject',
+};
+
+// 唯一的出声口。画面先、声音后——调用方负责画面，这里只负责"这一下该响什么"。
+function fire(event) {
+  const cue = EVENT_CUE[event];
+  if (cue) Sound[cue]?.();
+  return cue || null;
+}
+
+function afterStep(event) {
+  if (event) fire(event);
+  if (game && game.diag.conflicts > 0) fire(GameEvent.CONFLICT);
   syncStats();
   draw();
   if (game && game.status === 'won') onWin();
-  else if (game) Store.saveResume(game.puzzle, game, clock());
+  else {
+    // 盘面被改回未解：胜利卡片必须跟着收起来（见 closeWinCard）。
+    closeWinCard();
+    if (game) Store.saveResume(game.puzzle, game, clock());
+  }
 }
 
 // ---- 对局生命周期 ---------------------------------------------------------------------
@@ -266,6 +305,7 @@ function begin({ tier = 'trainee', seed = null, resume = null } = {}) {
   el.canvas.dataset.mode = game.mode;
   el.winVeil.hidden = true;
   el.winRecord.textContent = '';
+  winRecorded = false;
   paused = false;
   el.pauseVeil.hidden = true;
   el.btnPause.setAttribute('aria-pressed', 'false');
@@ -326,15 +366,35 @@ function onWin() {
   freezeClock();
   const ms = clock();
   const s = game.state();
-  Store.recordSolve(ms, s.hints);
-  const better = Store.recordBest(s.tier, { ms, hints: s.hints, moves: s.moves, size: s.size });
+  // 一次胜利只记一次分。旧代码每落一次子都问一遍"赢了吗"，于是"赢下 → 把正解撤销掉
+  // → 再赢回来"会把同一个盘记成解过两次（totals.solved 由 1 变 2），成绩也就重复入账。
+  let better = false;
+  if (!winRecorded) {
+    Store.recordSolve(ms, s.hints);
+    better = Store.recordBest(s.tier, { ms, hints: s.hints, moves: s.moves, size: s.size });
+    winRecorded = true;
+  }
   Store.clearResume();
-  Sound.win();
+  fire(GameEvent.WIN);
   FX.ripple();
   el.winMeta.textContent = `${s.size} · 舰队 ${s.fleet} · ${fmtMs(ms)} · ${s.moves} 步 · ${s.hints} 提示 · 实测难度 ${s.score.toFixed(1)}`;
   el.winRecord.textContent = better ? '新纪录' : '';
   el.winVeil.hidden = false;
   draw();
+}
+
+// 胜利卡片是"盘面是正解"这件事的投影，不是独立的状态：盘面一被改回去，卡片就得跟着收。
+// 旧代码只在 begin() 里收起卡片，于是"赢下 → 按 Z 撤销"之后，屏幕上仍挂着"你赢了"，
+// 而盘面已经不是正解——这正是本仓顶上写着的那句"UI 说'你赢了'而盘面不合法，是这个品类里
+// 最糟的 bug"。判胜状态跟了盘面（闸里"擦掉一格就不算赢"那条就是它），卡片也得跟。
+// 顺带把钟续上：盘面还在玩，钟就不该停在"赢的那一刻"。
+function closeWinCard() {
+  if (!game || game.status === 'won') return false;
+  if (el.winVeil.hidden) return false;
+  el.winVeil.hidden = true;
+  el.winRecord.textContent = '';
+  runClock();
+  return true;
 }
 
 function useHint() {
@@ -344,7 +404,7 @@ function useHint() {
   // 按 cells 判会让下面读 got.rule.name 直接炸掉——玩家把一行写超之后按「提示」就白屏。
   if (got.rule) {
     FX.flash(got.cells || [], got.kind || 'ship');
-    Sound.hint();
+    fire(GameEvent.HINT);
     el.hintRule.textContent = `规则「${got.rule.name}」：${got.rule.note}`;
     el.hintLine.textContent = got.why || '';
   } else {
@@ -352,7 +412,7 @@ function useHint() {
     el.hintLine.textContent = got.text || '';
     if (got.conflict) {
       FX.flash(got.cells || [], 'conflict');
-      Sound.conflict();
+      fire(GameEvent.CONFLICT);
     }
   }
   syncStats();
@@ -372,14 +432,32 @@ function undo() {
   if (!game || paused) return null;
   const step = game.undo();
   if (step) {
-    Sound.undo();
+    fire(GameEvent.UNDO);
     FX.clear();
     syncStats();
     draw();
+    // 撤销可能把正解撤没了——胜利卡片得跟着盘面走。
+    closeWinCard();
     // 撤销同样改了盘（还动了 moves 计数）：不落盘的话"撤销后刷新"会把刚擦掉的格子还回来。
     Store.saveResume(game.puzzle, game, clock());
+  } else {
+    // 没东西可撤也要说话。旧代码这里一声不吭：玩家按了 Z 什么也没发生，
+    // 分不清是"没得撤"还是"键坏了"——按下去没反应和坏掉在体感上是同一件事。
+    flashUndoLabel('没有可撤销的');
+    fire(GameEvent.REJECT);
   }
   return step;
+}
+
+// 拒绝要看得见：按钮上写清楚"没有可撤销的"，1.2 秒后自己回去。
+let undoLabelTimer = 0;
+function flashUndoLabel(msg) {
+  if (!el.btnUndo) return;
+  el.btnUndo.textContent = msg;
+  clearTimeout(undoLabelTimer);
+  undoLabelTimer = setTimeout(() => {
+    if (el.btnUndo) el.btnUndo.textContent = '撤销';
+  }, 1200);
 }
 
 function setMode(mode) {
@@ -443,7 +521,8 @@ el.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 function finishStroke(got) {
   if (!got) return;
-  afterStep(got.kind === 'erase' ? 'erase' : got.kind === 'stroke' ? 'fleet' : 'paint');
+  // 手势的种类决定事件：擦掉与刷出来是两件事，刷一整条线（fleet）与点一格（paint）也是两件事。
+  afterStep(got.kind === 'erase' ? GameEvent.ERASE : got.kind === 'stroke' ? GameEvent.FLEET : GameEvent.PAINT);
 }
 
 // ---- 菜单 -----------------------------------------------------------------------------

@@ -295,6 +295,25 @@
     const erasedWater = [...Array(g2.board.size).keys()].find((t) => g2.puzzle.solution[t] !== E().SHIP);
     A().erase([erasedWater]);
     ck('擦一个本来就是水的格子是空手势', A().state().won === true);
+
+    // 赢下之后撤销：胜利卡片必须跟着盘面走，而且一次胜利只记一次分。
+    // 这一段是被真实玩家撞出来的：赢下 → 按 Z → 屏幕上还挂着"你赢了"，而盘面已经不是正解
+    // （同一个盘还被记成解过两次）。判胜状态跟了盘面（上面"擦掉一格就不算赢"就是它），
+    // 卡片也得跟——本仓顶上写着"UI 说'你赢了'而盘面不合法，是这个品类里最糟的 bug"。
+    const solved0 = E().Store.data.totals.solved;
+    A().begin({ tier: 'regular', seed: 'erase-win' });
+    fillToSolution();
+    ck('赢下这一局', A().state().won === true);
+    ck('胜利卡片弹出来', shown('#win-veil'));
+    ck('这一次胜利记了一分', E().Store.data.totals.solved === solved0 + 1);
+    A().undo();
+    ck('撤销后盘面不再是正解', A().state().won === false);
+    ck('撤销后胜利卡片收起来', !shown('#win-veil'));
+    ck('撤销不重复记分', E().Store.data.totals.solved === solved0 + 1);
+    const sol2 = [...A().game.puzzle.solution].map((v, t) => (v === E().SHIP ? t : -1)).filter((t) => t >= 0);
+    A().paint(sol2);
+    ck('再赢回来', A().state().won === true);
+    ck('再赢一次也不重复记分', E().Store.data.totals.solved === solved0 + 1);
     return report({ tier: 'erase' });
   };
 
@@ -314,6 +333,16 @@
     eq('退到起点', [...g.st.cells].filter((v) => v !== E().UNKNOWN).length, ink0);
     ck('栈空了', g.st.history.length === 0);
     ck('空手势没有留快照', A().paint([]) === null && g.st.history.length === 0);
+
+    // 空撤销栈也要有回应。旧代码这里一声不吭：按了 Z 什么也没发生，玩家分不清
+    // "没得撤"和"键坏了"——按下去没反应与坏掉在体感上是同一件事。
+    A().begin({ tier: 'trainee', seed: 'undo-empty' });
+    const osc0 = A().soundStats().oscillators;
+    A().undo();
+    await wait(30);
+    ck('空栈撤销有话说', text('#btn-undo') === '没有可撤销的', text('#btn-undo'));
+    ck('空栈撤销有拒绝音', A().soundStats().oscillators > osc0, `${osc0} -> ${A().soundStats().oscillators}`);
+    ck('空栈撤销不退步数', A().state().moves === 0, A().state().moves);
     return report({ tier: 'undo' });
   };
 

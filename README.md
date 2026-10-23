@@ -26,7 +26,7 @@
 - 规模：**10 个 ES Module / 2,470 行 JS** + 4 个验证脚本 979 行 + `verify.sh` 134 行 + 302 行 CSS/HTML，
   **运行时依赖 0 个**。
 - 验证：**引擎不变量全绿**（七条规则的 soundness 探针 / 10 组独立计数对账 / 466 处单格改动逐一答复 /
-  五档出题 6/6）+ **119 项浏览器断言**（10 个场景，读 DOM 几何与画布像素，不读标志位）。
+  五档出题 6/6）+ **130 项浏览器断言**（10 个场景，读 DOM 几何与画布像素，不读标志位）。
 - **在线试玩**：<https://z-biz-game.github.io/z-biz-game-battleship-cos/>（`main` 分支推送即自动部署）
 
 ---
@@ -54,8 +54,8 @@ npm run verify       # 无头 Chrome 跑 10 个浏览器场景（需本机 Chrom
 === play ===     12 checks, 0 failed
 === hint ===      9 checks, 0 failed
 === paint ===     7 checks, 0 failed
-=== erase ===     6 checks, 0 failed
-=== undo ===      5 checks, 0 failed
+=== erase ===     14 checks, 0 failed
+=== undo ===      8 checks, 0 failed
 === save ===      8 checks, 0 failed
 === resume ===    6 checks, 0 failed
 === layout ===   11 checks, 0 failed
@@ -78,11 +78,15 @@ BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 | **同笔再点一次** | 变成橡皮——铅笔在纸上点两下，第二下就是把墨去掉（这一步也计步） |
 | **船格 / 水格 / 循环** | 三档笔（或 `1` `2` `3`）：循环笔走 未定 → 船 → 水 → 未定 |
 | **提示**（或 `H`） | 给出当前推得出的一格，点名规则；这一步真的落子，也真的计入求助次数 |
-| **撤销**（或 `Z`） | 退掉一整个手势——一笔刷过的格子一起回来；**步数退，求助次数不退** |
+| **撤销**（或 `Z`） | 退掉一整个手势——一笔刷过的格子一起回来；**步数退，求助次数不退**。没得撤时不会一声不吭：按钮上写明「没有可撤销的」，另给一声拒绝音 |
 
 判胜用的是 `verify()`：只读盘面，按规则原文核对"舰队长度多重集对不对得上、船段是不是直线、
 两船有没有相接（含对角）、每条给出的行列数数不数得对"。它不读推导脚本也不读 UI 记账，
 所以**提示逻辑写错也伪造不出一场胜利**。
+
+胜利卡片是这件事的**投影**，不是独立的状态：正解被撤销掉（按 `Z` 或擦掉一格）之后，卡片立刻
+收起、钟继续走——屏幕上不会同时挂着「你赢了」和一张已经不是正解的盘面。一次胜利只记一次分，
+撤销再赢回来不会把同一个盘记成解过两次。
 
 ---
 
@@ -133,7 +137,7 @@ BASE_URL=https://z-biz-game.github.io/z-biz-game-battleship-cos/ npm run verify
 这个仓没有构建步骤：浏览器加载的就是盘上这些文件，`Pages` 却只上传 `tools/assemble-site.sh`
 拷进 `_site` 的那一份。于是有一条本地**结构性看不见**的坏法——页面后来引用了新文件，
 而拷贝清单还停在旧的三行。这一轮就撞上了：`manifest.webmanifest`、`sw.js`、`assets/icons/*`
-全都进了页面，却没有一条进 artifact，线上逐个 404，而仓里 119 项浏览器检查加引擎测试**一条都不红**，
+全都进了页面，却没有一条进 artifact，线上逐个 404，而仓里 130 项浏览器检查加引擎测试**一条都不红**，
 因为没有任何一步在"清单只拷三个路径"的那个环境里加载过页面。PWA 那一层（可安装、离线打开）
 在仓库里是完整的，在线上等于没写过——`js/pwa-register.js` 的注册失败是被 `catch` 静音的，
 所以它连报错都不给。
@@ -182,7 +186,7 @@ B8 加那张的 D1/D2），而 `B5`（要有 >=512 的图标）此刻仍然绿�
 钉住 rows 才有意义。这一段也进了 `tools/verify.sh`（在浏览器闸之前跑，不占 Chrome）和 `ci.yml`
 的 check job，`pages.yml` 里则对**即将上传的那个 `_site`** 再跑一次。整机跑在
 `_tmp-fleet-final-battleship-r1.log`：deploy-set 42 条引用 / 68 rows 全绿，其后 engine/gen/play/hint/
-paint/erase/undo/save/resume/layout 十腿共 119 项检查、0 失败；rc 记在同目录 `_tmp-fleet-final-r1.log`。
+paint/erase/undo/save/resume/layout 十腿共 130 项检查、0 失败；rc 记在同目录 `_tmp-fleet-final-r1.log`。
 
 远端这一轮两头都补齐了。Actions run#8（`9e36367`）的 `CI` 与 `Deploy to GitHub Pages` 均
 `completed / success`——CI 的两个 job 各 8 步全绿（其中一个 job 的名字就写着 both URL shapes），
