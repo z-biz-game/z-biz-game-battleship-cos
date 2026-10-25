@@ -4,6 +4,7 @@
 
 import { Palette, applyThemeVars, setReduceMotion, prefersReducedMotion } from './theme.js';
 import { Sound } from './audio/synth.js';
+import { haptics } from './haptics.js';
 import { Store } from './store.js';
 import { TIERS, tierFor, makePuzzle, generate, solutionOf, layout } from './engine/generate.js';
 import { countSolutions } from './engine/count.js';
@@ -171,10 +172,28 @@ const EVENT_CUE = {
   [GameEvent.REJECT]: 'reject',
 };
 
+// 事件 → 触觉档。触觉是第三路（视觉与听觉之外的那一路），档位只有三档：
+// 轻 tap 8ms / 中 correct 26ms / 重 wrong [14,40,14]（见 js/haptics.js 与 003 §0）。
+// 每一行都得说得出玩家语义——说不出就不接这一行。不造第四档，也不做"无差别
+// pointerdown 都震一下"那种垫片：没有分级的震动只是噪音，还会把三档的差别节流掉。
+const EVENT_HAPTIC = {
+  [GameEvent.PAINT]: () => haptics.tap(),       // 标了一个格（船位或水）：这一下真的落上去了
+  [GameEvent.FLEET]: () => haptics.tap(),       // 放下了一整艘船：这一笔落上去了
+  [GameEvent.ERASE]: () => haptics.tap(),       // 擦掉了记号：盘面退了一格
+  [GameEvent.UNDO]: () => haptics.tap(),        // 撤销一步：盘面退了一步
+  [GameEvent.HINT]: () => haptics.correct(),    // 引擎点名了一条当下成立的推理：正确认出了船位，或正确排除了一片水
+  [GameEvent.CONFLICT]: () => haptics.wrong(),  // 盘面和题面打架：误标——船格数对不上，或船碰到了船
+  [GameEvent.REJECT]: () => haptics.wrong(),    // 这一下没生效（没得可撤）：玩家的操作没落地
+  [GameEvent.WIN]: () => haptics.wrong(),       // 收官：只有三档，胜利归最重的那一档
+};
+
 // 唯一的出声口。画面先、声音后——调用方负责画面，这里只负责"这一下该响什么"。
+// 触觉接在最后：它是补路不是主路，视觉与听觉先到位。
 function fire(event) {
   const cue = EVENT_CUE[event];
   if (cue) Sound[cue]?.();
+  const haptic = EVENT_HAPTIC[event];
+  if (haptic) haptic();
   return cue || null;
 }
 

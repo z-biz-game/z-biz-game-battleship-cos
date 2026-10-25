@@ -23,7 +23,7 @@
   这一条抓的是"推错了"，比"推不动"值钱。
 - 难度不是标签：`初学 → 大师` 五档的分数带是**实测**出来的（`npm run balance` 打印分位表 + 漂移门禁），
   最大档只到 7×7，**为什么不能更大是量出来的**，写在 `js/engine/generate.js` 的档位表上方。
-- 规模：**10 个 ES Module / 2,470 行 JS** + 4 个验证脚本 979 行 + `verify.sh` 134 行 + 302 行 CSS/HTML，
+- 规模：**14 个 ES Module / 3,200 行 JS** + tools/ 下另 8 支脚本 1,899 行 + `verify.sh` 148 行 + 459 行 CSS/HTML，
   **运行时依赖 0 个**。
 - 验证：**引擎不变量全绿**（七条规则的 soundness 探针 / 10 组独立计数对账 / 466 处单格改动逐一答复 /
   五档出题 6/6）+ **130 项浏览器断言**（10 个场景，读 DOM 几何与画布像素，不读标志位）。
@@ -210,10 +210,14 @@ js/engine/count.js     独立的逐格穷举计数器（唯一性的第二意见
 js/engine/generate.js  种舰队 → 按"唯一且推得完"抹线索 → 按实测分数带抽盘 + 五档档位表
 js/ui/game.js          状态机：手势、撤销、提示、判胜
 js/render/board.js     几何 + 绘制 + 命中（线索画在盘外，缺数画菱形）
+js/render/fx.js        盘面上的"活"：声呐扫掠、提示余辉、胜利的波（定步长仿真）
 js/theme.js            配色与动效令牌（五档五配色）
 js/audio/synth.js      WebAudio 合成音效，零音频文件
+js/haptics.js          触觉分级（轻 8ms / 中 26ms / 重 [14,40,14]），带特性探测
 js/store.js            localStorage 单键存档：种子 + 墨（游程编码）+ 这一局的花费
 js/main.js             装配、菜单、事件、window.battleship 调试面
+js/pwa-register.js     注册 Service Worker（普通脚本，抢在模块依赖图之前；非安全上下文不注册）
+js/sw-register.js      注册 Service Worker（模块之后那份；file:// 下不注册）
 tools/                 engine-test / balance / playtest(CDP) / scenarios / deploy-set / assemble-site / verify.sh
 tools/assemble-site.sh  部署产物的唯一清单（pages.yml 与本地闸调同一支）
 tools/deploy-set.mjs  部署集闸：检查即将上传的那份产物
