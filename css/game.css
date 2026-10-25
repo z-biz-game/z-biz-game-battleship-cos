@@ -169,7 +169,11 @@ main { flex: 1; }
 .foot code { font-family: var(--font-mono); color: var(--ink-dim); }
 
 body[data-busy='1'] #board { cursor: progress; }
-body.reduce-motion * { transition: none !important; animation: none !important; }
+/* 站内开关那条（body.reduce-motion）由 js/main.js:591 写，喂的是「系统地板 + 站内开关」的合取。
+   伪元素也收进来：* 不匹配 ::before/::after，它们各自的 animation 照样会跑。 */
+body.reduce-motion *,
+body.reduce-motion *::before,
+body.reduce-motion *::after { transition: none !important; animation: none !important; }
 
 @media (max-width: 900px) {
   #view-game { grid-template-columns: 1fr; }
@@ -255,4 +259,16 @@ body {
   .topbar { flex-wrap: wrap; row-gap: 8px; }
   .brand { min-width: 0; }
   .top-actions { flex-wrap: wrap; row-gap: 6px; }
+}
+
+/* ---------- 系统偏好：prefers-reduced-motion（设计标准 §4 的 CSS 半） ----------
+   这一半不靠 JS：上面那条 body.reduce-motion 是 js/main.js:591 在 applySettings() 里写的，
+   写的是**一次**读数（系统偏好 + 站内开关）；系统偏好是运行中可改的，媒体查询当场跟着变，
+   脚本还没跑到 applySettings() 时这一块也已经把动效按下去了。
+   本仓 CSS 里的动效是按钮上那一条 transition（css/game.css:54），这条媒体查询把它收掉。 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+  }
 }
